@@ -57,12 +57,7 @@
         <!-- left column: map -->
         <div class="col-sm-6 zero-pad-left">
           <h3 id="map-header"></h3>
-          <div class="col-sm-12 zero-pad-left">
-            <p>
-             These long-running stations are scattered throughout the US; a subset are shown here.
-             Click on one of the map's dots to view its data, or click on one of the representative station locations listed below. 
-            </p>
-          </div>
+          <div class="col-sm-12 zero-pad-left" id="map-text"></div>
           <div class="col-sm-12 zero-pad-left" id="map-controls-container"></div>
           <div class="col-sm-12 zero-pad-left" id="map-container"></div>
         </div>
@@ -71,13 +66,7 @@
         <!-- right column: histogram/plots -->        
         <div class="col-sm-6 zero-pad-left">
           <h3 id="histogram-header"></h3>
-          <div class="col-sm-12 zero-pad-left">
-            <p>
-              Each station's dataset consists of daily minimum and maximum temperatures.  
-              To visualize the distribution of these daily highs and lows throughout the year, we can construct
-              a radial histogram in which angle corresponds to season and radial distance to temperature.
-            </p>
-          </div>
+          <div class="col-sm-12 zero-pad-left" id="histogram-text"></div>
           <div class="col-sm-12 zero-pad-left" id="histogram-controls-container"></div>
           <div class="col-sm-12 zero-pad-left" id="histogram-container"></div>
         </div>
@@ -198,6 +187,9 @@
 
     d3.select("#map-header").text(TEMPS.currentTab.mapHeader);
     d3.select("#histogram-header").text(TEMPS.currentTab.histogramHeader);
+
+    d3.select("#map-text").text(TEMPS.currentTab.mapText);
+    d3.select("#histogram-text").text(TEMPS.currentTab.histogramText);
 
     // update the map to the current Tab 
     // NEED TO REMOVE ROAD TRIP BUT RE-MARK CURRENT STATION
