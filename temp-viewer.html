@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title></title>
+
+  <link rel="icon"          href="../favicon.ico" type="image/x-icon" />
+  <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon" />
+  <!-- Bootstrap css -->
+  <link href="./components/bootstrap/bootstrap.min.custom-breakpoint.css" rel="stylesheet">
+  <!--  leaflet css -->
+  <link rel="stylesheet" href="./components/leaflet/leaflet.css" />
+
+</head>
+<body>
+
+  <div class="container" id="header-container">
+      <!-- header row -->
+      <div class="row">
+
+          <!-- title -->
+          <div class="col-sm-12">
+              <h2>A century of temperature observations</h2>
+          </div>
+
+          <!-- tagline text -->
+          <div class="col-sm-9">
+            <p> 
+              At a small number of sites, weather observations have been continuously and reliably recorded for more than one hundred years. 
+              The temperature observations from these weather stations form one of the most longitudinally complete bodies of climate data in the world.
+            </p>
+          </div>
+
+          <!-- about/links -->
+          <div class="col-sm-3 zero-pad-left" id="header-links-container">
+              <ul class="list-inline">
+                  <li><a href="http://kchev.org">kchev.org</a></li>
+                  <li>|</li>
+                  <li><a href="https://github.com/keithchev/">github</a></li>
+              </ul>
+          </div>
+      
+      </div> <!-- end row -->
+      <div class="row" id="tabs-container"></div>
+    </div> <!-- end main container -->
+
+  <div class="container main-container">
+
+    <div class="row">
+
+      <div class="col-sm-12">
+
+        <!-- left column: map -->
+        <div class="col-sm-6 zero-pad-left">
+          <h3 id="map-header"></h3>
+          <div class="col-sm-12 zero-pad-left">
+            <p>
+             These long-running stations are scattered throughout the US; a subset are shown here.
+             Click on one of the map's dots to view its data, or click on one of the representative station locations listed below. 
+            </p>
+          </div>
+          <div class="col-sm-12 zero-pad-left" id="map-controls-container"></div>
+          <div class="col-sm-12 zero-pad-left" id="map-container"></div>
+        </div>
+
+
+        <!-- right column: histogram/plots -->        
+        <div class="col-sm-6 zero-pad-left">
+          <h3 id="histogram-header"></h3>
+          <div class="col-sm-12 zero-pad-left">
+            <p>
+              Each station's dataset consists of daily minimum and maximum temperatures.  
+              To visualize the distribution of these daily highs and lows throughout the year, we can construct
+              a radial histogram in which angle corresponds to season and radial distance to temperature.
+            </p>
+          </div>
+          <div class="col-sm-12 zero-pad-left" id="histogram-controls-container"></div>
+          <div class="col-sm-12 zero-pad-left" id="histogram-container"></div>
+        </div>
+
+</div>
+
+
+    </div>   <!-- end row -->
+  </div> <!-- end container -->
+
+
+  <!-- custom style -->
+  <link rel="stylesheet/less" type="text/css" href="styles/temp-viewer.main.less" />
+
+  <!-- less default options -->
+  <script>
+    less = {
+      env: "development",
+      async: false,
+      fileAsync: false,
+      poll: 1000,
+      functions: {},
+      dumpLineNumbers: "comments",
+      relativeUrls: false,
+      rootpath: ":/a.com/"
+    };
+  </script>
+
+  <!-- third-party components -->
+  <script src="./components/less/less.min.js"></script>
+  <script src="./components/d3.v4/d3.min.js"></script>
+  <script src="./components/d3-tip/index.js"></script>
+  <script src="./components/d3-scale-chromatic.v1.min.js"></script>
+  <script src="./components/leaflet/leaflet.js"></script>
+
+  <script src="./components/topojson.v1.min.js"></script>
+  <script src="./components/d3-selection-multi.min.js"></script>
+  <script src="./scripts/initGlobals.js"></script>
+
+  <script>
+
+  d3.csv(TEMPS.metadataFilename, function(err, stationInfoList) {
+    
+    stationInfoList.forEach(function (row) {
+      
+      row.lat = +row.lat;
+      row.lon = +row.lon;
+      row.alt = +row.alt * 3.28;
+      row.color = "#333" // initial map dot color;
+
+      row.name = row.name.replace('-', ' ');
+
+      // capitalize the first letter of each word - from http://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript/
+      row.name = row.name.replace(/\w\S*/g, function (txt) { return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(); });
+    });
+
+    // list of all stations
+    TEMPS.stationInfoList = stationInfoList;
+
+    drawTabs();
+
+    // start at tab 1, obviously
+    TEMPS.currentTab = TEMPS.tabs[0];
+
+    // initialize a current station getter/setter 
+    TEMPS.currentStation = makeCurrentStation();
+
+
+    // *** MAP PANEL ***
+    // US map with stations - this is fixed for all tabs (only station color changes)
+    TEMPS.stationMap = loadStationMap();
+
+
+    TEMPS.roadTripPath = [];
+    TEMPS.currentRoadTripIndex = 0;
+
+
+    // *** INITIALIZE HISTOGRAM ***
+    // radial high/low temps heatmap
+    TEMPS.radialHistogram = makeRadialHistogram();
+
+    // define the initial current station to the first one on the road trip
+    var initialStationInfo = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[TEMPS.currentRoadTripIndex].id)];
+
+    // finally, load the first tab
+    loadTab(initialStationInfo);
+
+  });
+
+
+  function drawTabs() {
+
+    var tabs = d3.select("#tabs-container").selectAll(".tab")
+      .data(TEMPS.tabs).enter()
+      .append("div")
+      .attr("class", "col-xs-2 tab")
+      .attr("id", getField("id"))
+      .on("click", function (d) { 
+          TEMPS.currentTab = d; 
+          loadTab(null); 
+      });
+
+    tabs.append("span").attr("class", "tab-header").text(getField("header"));
+    tabs.append("span").attr("class", "tab-text").text(getField("text"));
+  }
+
+  function loadTab(initialStationInfo) {
+
+    var histControls = d3.select("#histogram-controls-container");
+
+    d3.selectAll(".tab").style("border", "none");
+    d3.select("#" + TEMPS.currentTab.id).style("border-bottom", "4px solid #666");
+
+
+    d3.select("#map-header").text(TEMPS.currentTab.mapHeader);
+    d3.select("#histogram-header").text(TEMPS.currentTab.histogramHeader);
+
+    // update the map to the current Tab 
+    // NEED TO REMOVE ROAD TRIP BUT RE-MARK CURRENT STATION
+    TEMPS.stationMap[TEMPS.currentTab.method]();
+
+    // redraw the histogram from scratch and set its .update method
+    TEMPS.radialHistogram[TEMPS.currentTab.method]();
+
+
+
+    // set the current station
+    // this updates the histogram (whose .update was set above) to the current station
+    // (if initialStationInfo is null, reload the existing currentStation)
+    TEMPS.currentStation.set(initialStationInfo);
+
+
+    histControls.selectAll("svg").remove();
+
+
+    // finally: load the tab-specific controls 
+    if (TEMPS.currentTab.id==="highs-lows") {
+
+      TEMPS.roadTripPath = [];
+      TEMPS.currentRoadTripIndex = 0;
+      
+      // mapControls.append("div")
+      //   .attrs({"class": "plot-button", "id": "button-back"})
+      //   .text("Back")
+      //   .on("click", onBack);
+
+      // mapControls.append("div")
+      //   .attrs({"class": "plot-button", "id": "button-forward"})
+      //   .text("Forward")
+      //   .on("click", onForward);
+
+      // function onForward() { 
+      //   TEMPS.currentRoadTripIndex = TEMPS.currentRoadTripIndex < (TEMPS.roadTrip.length - 1) ? TEMPS.currentRoadTripIndex + 1 : 0;
+      //   TEMPS.stationMap.updateRoadTripPath();
+      // }
+
+      // function onBack() {
+      //   TEMPS.currentRoadTripIndex = TEMPS.currentRoadTripIndex===0 ? TEMPS.roadTrip.length - 1 : TEMPS.currentRoadTripIndex - 1;
+      //   TEMPS.stationMap.updateRoadTripPath();
+      // }
+
+    }
+
+    // draw the axis on which to select early and late time ranges
+    // and add button to toggle between tmin and tmax
+    if (TEMPS.currentTab.id==="changes") {
+
+      var width    = 350;
+      var height   = 60;
+      var pad = 15;
+      var svg  = histControls.append("svg").attrs({width: width, height: height});
+
+      var timeRange = [1911, 2010];
+
+      var timeScale = d3.scaleLinear().range([pad, width-2*pad]).domain(timeRange);
+
+      var tickVals = d3.range(1920, 2020, 10);
+      tickVals.unshift(1911);
+
+      var svgG = svg.append("g").attr("transform", "translate(" + pad + "," + pad + ")");
+      var axis = svgG.append("g").attr("transform", "translate(" + 0 + "," + (height - 2*pad - 5) + ")");
+
+      axis.call(d3.axisBottom(timeScale).tickValues(tickVals).tickFormat(function (tick) { return tick + ""; }));
+
+      var brushEarly = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
+      var brushLate  = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
+
+      svgG.append("g")
+         .attr("class", "brush-container")
+         .attr("id", "brush-early").call(brushEarly);
+
+      svgG.append("g")
+          .attr("class", "brush-container")
+          .attr("id", "brush-late").call(brushLate);
+
+      brushEarly.move(d3.select("#brush-early"), [1911, 1940].map(timeScale)); 
+      brushLate.move(d3.select("#brush-late"), [1980, 2010].map(timeScale)); 
+
+      // allows cursor to access both brushes, but prevents re-brushing in a new region
+      d3.selectAll(".overlay").style("pointer-events", "none");
+
+      function brushed() {
+
+        var earlyRange = d3.brushSelection(d3.select("#brush-early").node());
+        var lateRange  = d3.brushSelection(d3.select("#brush-late").node());
+
+        earlyRange = earlyRange!==null ? earlyRange.map(timeScale.invert) : null;
+        lateRange = lateRange!==null ? lateRange.map(timeScale.invert) : null;
+
+        // careful - this won't work if data hasn't loaded yet 
+        if (earlyRange!==null && lateRange!==null){
+          TEMPS.radialHistogram.earlyRange(earlyRange).lateRange(lateRange).update();
+        }
+      }
+    }
+
+
+  } //loadTab
+
+
+
+
+  function makeCurrentStation() {
+    
+    var currentStationInfo = {};
+    function currentStation() {}
+
+    currentStation.set = function(stationInfo) {
+      if (arguments.length && stationInfo) currentStationInfo = stationInfo;
+
+      // mark the station on the map
+      TEMPS.stationMap.markCurrentStation();
+
+      // load the station data (and update the histogram)
+      loadCurrentStationData();
+
+      return currentStation;
+    }
+
+    currentStation.get = function () {
+      return currentStationInfo;
+    }
+
+    return currentStation;
+  }
+
+
+  function loadStationMap() {
+
+    var stationInfoList = TEMPS.stationInfoList,
+        mapWidth  = 450,
+        mapHeight = mapWidth/1.5,
+        mapScale  = 600;
+        maxAlt    = d3.max(stationInfoList, getField('alt'));
+
+    var svg        = d3.select("#map-container").append("svg").attr("width", mapWidth).attr("height", mapHeight),
+        projection = d3.geoAlbersUsa().translate([mapWidth/2, mapHeight/2]).scale(mapScale),
+        mapPath    = d3.geoPath().projection(projection);
+
+    var spotRadius = 4;
+    var lastRoadTripIndex = 0;
+
+    // colorscale for station dot colors
+    var scaleHeight = 100,
+        scaleWidth  = 10,
+        colorScaleG = svg.append("g")
+                         .attr("id", "map-colorbar-axis")
+                         .attr("transform", "translate(" + (mapWidth-scaleWidth) + "," + (mapHeight-scaleHeight-50) + ")");
+               
+     // hover tip for station dots
+    var stationTip = d3.tip().attr("class", "d3-tip").offset([-10,0]);
+    stationTip.html(function (d) { 
+          HTMLString = 
+          "<span class='tip-field'>Name: </span>" + 
+          "<span class='tip-value'>" + d.name + "</span><br>" + 
+          "<span class='tip-field'>Elevation: </span>" + 
+          "<span class='tip-value'>" + d3.format('.0f')(d.alt) + "ft</span><br>" + 
+          "<span class='tip-field'>ID: </span>" + 
+          "<span class='tip-value'>" + d.id + "</span>"; 
+          return HTMLString;
+    });
+
+    // load and draw states and stations
+    d3.json('./data/us-states.json', function(err, us) {
+
+      var lower48 = us.features.filter(function (f) { return f.properties.name!=='Alaska' && f.properties.name!=="Hawaii"; });
+
+      svg.selectAll("path.map-state").data(lower48)
+         .enter().append("path")
+         .attr("class", "map-state")
+         .attr("d", mapPath);
+
+     // make sure dots are on top - asynchrony means states are probably drawn last
+     svg.selectAll(".map-station-dots").moveToFront();
+
+    }); // d3.json
+
+    svg.call(stationTip);
+
+    // add a dot for each station
+    svg.selectAll(".map-station-dots").data(stationInfoList)
+       .enter().append("circle")
+       .attrs({
+          class: "map-station-dots",
+          id: getField("id"),
+          cx: function(d) { return projection([d.lon, d.lat])[0]; },
+          cy: function(d) { return projection([d.lon, d.lat])[1]; },
+          fill: getField("color"),
+          r: spotRadius
+        })
+       .on("mouseover", function(d) { 
+          d3.select(this).attr("r", 1*spotRadius).classed("map-station-dots-selected", true).moveToFront(); 
+          stationTip.show(d); 
+        })
+       .on("mouseout", function(d) { 
+          d3.select(this).attr("r", spotRadius).classed("map-station-dots-selected", false);
+          stationTip.hide(d);
+        })
+       .on("click", function(d) { 
+          d3.selectAll(".map-station-dots").attr("r", spotRadius).classed("map-station-dots-selected", false);
+          d3.select(this).attr("r", "4px").classed("map-station-dots-selected", true).moveToFront();
+          TEMPS.currentStation.set(d);
+        });
+
+
+      // draw the table-like list of regions and representative stations
+      var regionDivs = d3.select("#map-controls-container").selectAll("div").data(TEMPS.regions)
+                 .enter().append("div")
+                 .attrs({class: "road-trip-region", id: getField("region")});
+
+      regionDivs.append("div").attr("class", "road-trip-header")
+                .text(getField("label"));
+
+      regionDivs.selectAll(".road-trip-stop")
+                .data( function (region) { 
+                  return TEMPS.roadTrip.filter(function (roadTripStop) { return region.region===roadTripStop.region; }); 
+                })
+                .enter().append("div")
+                .attrs({class: "road-trip-stop"})
+                .text(getField("text"))
+                .on("click", function (d) {
+                    TEMPS.currentStation.set(TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(d.id)]); 
+                });
+
+
+    function stationMap() {}
+
+    // transition map to Tab 1
+    stationMap.loadTab1 = function () {
+
+      // color station dots by elevation by updating the color field
+      // necessary so dots can be recolored on mouseover/out
+      // (note: because this works, .data() must not return a copy of the bound data)
+      svg.selectAll(".map-station-dots")
+         .data().forEach(function (d) { d.color = colorByAlt(d.alt); });
+
+      // here we actually update the color
+      svg.selectAll(".map-station-dots").attr("fill", getField("color"));
+
+      // draw the color scale bar for elevation 
+      var tickVals = d3.range(0, 7500, 1500);
+      appendColorScale(colorScaleG, scaleWidth, scaleHeight, tickVals, colorByAlt);
+
+      // customize the tick labels
+      colorScaleG.select("text").text("Sea level");
+
+      // add 'ft' to the topmost tick
+      d3.select(colorScaleG.selectAll("text")._groups[0][tickVals.length-1])
+        .text( function() { return d3.select(this).text() + '+ft'; });
+
+      function colorByAlt(alt) {
+        return d3.interpolateRgb("#4daf4a", "#ddaa33")(d3.scaleLinear().range([.1,1]).domain([0, .5])(alt/maxAlt));
+      }
+    }
+
+    // transition the map to Tab 2
+    stationMap.loadTab2 = function () {
+
+      // color station dots by warmer/colder relative to 1911 - changed when early/late range changed
+
+    }
+
+    stationMap.loadTab3 = function () {
+      // TBD
+    }
+
+
+
+    stationMap.markCurrentStation = function () {
+
+      svg.selectAll(".map-station-dots")
+         .attr("fill", getField("color"))
+         .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().id; })
+         .attr("fill", "#ff6666")
+         .moveToFront();
+
+    } // markCurrentStation
+
+    stationMap.updateRoadTripPath = function () {
+
+      // move forward
+      if (TEMPS.currentRoadTripIndex===lastRoadTripIndex + 1) {
+        TEMPS.roadTripPath.push(lineBetweenStations(lastRoadTripIndex, TEMPS.currentRoadTripIndex));
+      }
+
+      // move backward - remove last line
+      if (TEMPS.currentRoadTripIndex===lastRoadTripIndex - 1) {
+        TEMPS.roadTripPath = TEMPS.roadTripPath.slice(0, TEMPS.roadTripPath.length-1);
+      }
+
+      // stepped forward to 0 - erase path
+      if (TEMPS.currentRoadTripIndex===0 && lastRoadTripIndex===TEMPS.roadTrip.length - 1) {
+        TEMPS.roadTripPath = [];
+      }
+
+      // stepped back from 0 - draw entire path
+      if (TEMPS.currentRoadTripIndex===TEMPS.roadTrip.length - 1 && lastRoadTripIndex===0) {
+      }
+
+      var roadTrip = svg.selectAll("path.road-trip").data(TEMPS.roadTripPath);
+
+      roadTrip.enter().append("path")
+              .attr("class", "road-trip")
+            .merge(roadTrip)
+              .transition().duration(200)
+              .attr("d", mapPath);
+
+      roadTrip.exit().remove();
+
+      lastRoadTripIndex = TEMPS.currentRoadTripIndex;
+      TEMPS.currentStation.set(TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[TEMPS.currentRoadTripIndex].id)]);
+
+      return stationMap;
+
+      function lineBetweenStations(index1, index2) {
+
+        var station1 = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[index1].id)];
+        var station2 = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[index2].id)];
+
+        return lineData = {
+          type: "LineString",
+          coordinates: [ [station1.lon, station1.lat], [station2.lon, station2.lat] ],
+        };
+      }
+
+    } // stationMap.updateRoadTripPath
+
+
+    return stationMap;
+
+  } // loadStationMap
+
+
+
+
+
+
+
+
+  function appendColorScale(target, scaleWidth, scaleHeight, tickVals, colorFunction) {
+
+    // this makes the 1d color scale for the map
+    var barScale    = d3.scaleLinear().domain([0,d3.max(tickVals)]).range([scaleHeight, 0]),
+         barAxis    = d3.axisLeft(barScale).tickValues(tickVals).tickSize(0,0),
+         rectHeight = barScale(tickVals[0]) - barScale(tickVals[1]);
+
+    target.call(barAxis);
+   
+    target.selectAll("rect").data(tickVals)
+      .enter().append("rect").attrs({
+        class: "map-colorbar-rect",
+        y: function(tickVal) { return barScale(tickVal) - rectHeight/2; },
+        x: 0,
+        height: rectHeight, 
+        width: scaleWidth,
+        fill: function(tickVal) { return colorFunction(tickVal); }
+      });
+
+  }
+
+
+  function loadCurrentStationData() {
+
+    var stationID = TEMPS.currentStation.get().id;
+
+    // station CSV filenames lack leading zeros
+    if (stationID[0]==='0') stationID = stationID.slice(1); 
+
+    var stationFilename = './data/merge/station_' + stationID + '.csv';
+
+    d3.csv(stationFilename, function(err, data) {
+
+      data.forEach(function (row) {
+        row.year = +row.year;
+        row.doy  = +row.doy;
+        row.tmin = +row.tmin;
+        row.tmax = +row.tmax;
+      });
+
+      TEMPS.data = data;
+
+      TEMPS.radialHistogram.data(data).update();
+
+    });
+
+  }
+
+  function makeRadialHistogram() {
+
+    var PI = Math.PI;
+
+    var target, svg, svgG, rScale, thScale, origin, axes, arcs, legend, label;
+
+    var padL = 25, padR = 5, padT = 15, padB = 15;
+
+    var minRadius   = 30,
+        maxRadius   = 140,
+        legendWidth = 120,
+        svgHeight   = maxRadius * 2 + padL + padR, 
+        svgWidth    = svgHeight + legendWidth + 50;
+       
+    var data, binData, binShape, tempRange, earlyRange = [0,30], lateRange = [70,100];
+      
+      svg  = d3.select("#histogram-container").append("svg").attrs({width: svgWidth, height: svgHeight});
+      svgG = svg.append("g").attr("transform", "translate(" + padL + "," + padT + ")");
+
+      origin = svgG.append("g").attr("transform", "translate(" + ( maxRadius) + "," + ( maxRadius) + ")");
+      // origin.append("circle").attr("r", 3);
+
+      arcs = origin.append("g");
+      axes = origin.append("g");
+
+      rScale  = d3.scaleLinear().range([minRadius, maxRadius]);
+      thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]);
+
+
+       label = svgG.append("g")
+                 .attr("id", "histogram-label")
+                 .attr("transform", "translate(" + (svgWidth - legendWidth - 90) + "," + "0)");
+
+       label.append("text")
+            .attrs({id: "high-low-histogram-label-name",x: 0, y: 12 });
+
+       label.append("text")
+            .attrs({id: "high-low-histogram-label-elevation", x: 0, y: 30});
+
+      var legendSize     = legendWidth * .6,
+          legendTickVals = d3.range(0,1,.1),
+          legendXScale = d3.scaleLinear().range([0, legendSize]).domain([0, d3.max(legendTickVals)]),
+          legendYScale = d3.scaleLinear().range([legendSize, 0]).domain([0, d3.max(legendTickVals)]),
+          rectSize     = legendXScale(legendTickVals[1]) - legendXScale(legendTickVals[0]),
+          legendData   = [];
+
+      var legendYPos_bottom = svgHeight - legendSize - 50;
+
+      legend = svgG.append("g")
+                   .attr("id", "high-low-histogram-legend")
+                   .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (legendYPos_bottom) + ")");
+
+
+    function drawAxes () {
+
+      axes.selectAll("circle").remove();
+      axes.selectAll("text").remove();
+      axes.selectAll("path").remove();
+
+      // add radial (temperature) ticks
+      axes.selectAll("radius-axis.histogram-line")
+            .data(rTickValues)
+            .enter().append("circle")
+            .attr("class", "radius-axis histogram-line")
+            .attr("r", function (d) { return rScale(d +2.5); });
+
+      axes.selectAll(".radius-axis.histogram-text")
+            .data(rTickValues)
+            .enter().append("text")
+            .attr("class", "radius-axis histogram-text")
+            .attr("x", function (d) { return -rScale(d + 0) * Math.cos(PI/4); })
+            .attr("y", function (d) { return -rScale(d + 0) * Math.sin(PI/4); })
+            .text(function (d) { return d + '°'; });
+
+      
+      var thTickStop   = rScale(d3.max(rTickValues)) + 2;
+      var thTickStart  = rScale(d3.min(rTickValues)) + 2;
+      var thTickLine   = [{x: thTickStart, y:0}, {x: thTickStop, y:0}];
+
+      var thTickValues = [ {theta: 0, label: 'April', labelX: thTickStop + 14, labelY: 2},
+                           {theta: 90, label: 'June', labelX: 0, labelY: thTickStop + 10},
+                           {theta: 180, label: 'Sep', labelX: -thTickStop - 12, labelY: 2},
+                           {theta: -90, label: 'January', labelX: 0, labelY: -thTickStop - 4} ];
+
+      // add angle (month) ticks
+      axes.selectAll(".th-axis.histogram-line")
+            .data(thTickValues)
+            .enter().append("path")
+            .attr("class", "th-axis histogram-line")
+            .attr("d", function (tick) { return d3.line().x(getField('x')).y(getField('y'))(thTickLine); })
+            .attr("transform", function (tick) { return "rotate(" + tick.theta + ",0, 0)"; });
+
+      axes.selectAll(".th-axis.histogram-text")
+            .data(thTickValues)
+            .enter().append("text")
+            .attr("class", "th-axis histogram-text")
+            .attr("x", getField('labelX'))
+            .attr("y", getField('labelY'))
+            .text(getField('label'));
+    }
+
+    function radialHistogram() {}
+
+    radialHistogram.loadTab1 = function () {
+
+      // remove existing bins since bin size/number is going to change
+      arcs.selectAll(".histogram-bin").remove();
+
+      tempRange = [-20, 110];
+      
+      rScale.domain(tempRange);
+
+      rTickValues = [0, 32, 60, 90, 110];
+
+      calcBinColor = calcHighLowBinColor;
+
+      binShape = {daysPerBin: 5, tempPerBin: 5}; // bin size
+
+      // draw the legend - move to its own function?
+      legendData = [];
+      legendTickVals.map(function (tickX) {
+        legendTickVals.map(function (tickY) {
+          legendData.push( {x: legendXScale(tickX), y: legendYScale(tickY), color: calcBinColor(tickX, tickY) });
+        });
+      });
+
+      legend.selectAll("rect").data(legendData)
+            .enter().append("rect")
+            .attrs({
+              class: "histogram-legend-rect",
+              x: getField("x"),
+              y: getField("y"),
+              width: rectSize, height: rectSize,
+              fill: getField("color"),
+            });
+            
+      legend.append("text")
+            .attrs({
+              x: -legendSize/2 - rectSize/2,
+              y: -3,
+              transform: "rotate(-90)"
+            })
+            .text("Frequency of highs");
+
+      legend.append("text")
+            .attr("x", legendSize/2 + rectSize/2)
+            .attr("y", legendSize + rectSize + 8)
+            .text("Frequency of lows");
+
+
+      // draw the axes
+      drawAxes();
+
+      // set the update function for drawing highs and lows
+      radialHistogram.update = drawHighsLows;
+
+    }
+
+    radialHistogram.loadTab2 = function () {
+
+      // remove existing bins since bin size/number is going to change
+      arcs.selectAll(".histogram-bin").remove();
+
+      tempRange = [0, 70];
+      rScale.domain(tempRange);
+
+      rTickValues = [30, 60];
+
+      calcBinColor = calcEarlyLateBinColor;
+
+      binShape = {daysPerBin: 10, tempPerBin: 5}; // bin size
+
+      // draw the legend - move to its own function?
+      legendData = [];
+      legendTickVals.map(function (tickX) {
+        legendTickVals.map(function (tickY) {
+          legendData.push( {x: legendXScale(tickX), y: legendYScale(tickY), color: calcBinColor(tickX, tickY) });
+        });
+      });
+
+      legend.selectAll("rect").data(legendData)
+            .enter().append("rect")
+            .attr("class", "histogram-legend-rect")
+            .attr("x", getField("x"))
+            .attr("y", getField("y"))
+            .attr("width", rectSize)
+            .attr("height", rectSize)
+            .attr("fill", getField("color"));
+
+      legend.append("text")
+            .attr("x", -legendSize/2 - rectSize/2)
+            .attr("y", -3)
+            .attr("transform", "rotate(-90)")
+            .text("Frequency of highs");
+
+      legend.append("text")
+            .attr("x", legendSize/2 + rectSize/2)
+            .attr("y", legendSize + rectSize + 8)
+            .text("Frequency of lows");
+
+
+      // draw the axes
+      drawAxes();
+
+      // set the update function for drawing highs and lows
+      radialHistogram.update = drawEarlyLate;
+
+    }
+
+    function drawHighsLows() {
+
+      if (data===undefined) return;
+
+      // generate bin data for current station data (assume binShape unchanged) 
+      binData = calcHighLowHistogram(data, binShape, tempRange);
+
+      // assign colors: modifies bindata.binlist in place
+      assignColorsToBins(binData.binList, 'tminCount', 'tmaxCount', calcBinColor);
+
+      drawBins(binData);
+
+      return;
+    }
+
+
+    function drawEarlyLate() {
+
+      if (data===undefined) return;
+
+      binData = calcEarlyLateHistogram(data, binShape, tempRange, earlyRange, lateRange);
+      assignColorsToBins(binData.binList, 'tminCountEarly', 'tminCountLate', calcBinColor);
+
+      drawBins(binData);
+
+      return;
+    }
+
+   function drawBins(binData) {
+
+      var bins = arcs.selectAll(".histogram-bin").data(binData.binList);
+
+      bins.enter().append("path")
+          .attr("class", "histogram-bin")
+          .attr("d", makeArc)
+        .merge(bins).transition().duration(500)
+          .attr("fill", function (bin) { return bin.color; })
+          .style("opacity", function (bin) { return bin.opacity; })
+
+      bins.exit().remove();
+
+      axes.selectAll(".histogram-line").moveToFront();
+      axes.selectAll(".histogram-text").moveToFront();
+
+      d3.select("#high-low-histogram-label-name").text(TEMPS.currentStation.get().name + ", " + TEMPS.currentStation.get().state);
+      d3.select("#high-low-histogram-label-elevation").text("Elevation: " + d3.format(".0f")(TEMPS.currentStation.get().alt) + " feet");
+
+      function makeArc(bin) {
+        var arc = d3.arc()
+                    .innerRadius(rScale(bin.tmp))
+                    .outerRadius(rScale(bin.tmp + binShape.tempPerBin))
+                    .startAngle(thScale(bin.doy))
+                    .endAngle(thScale(bin.doy + binShape.daysPerBin ));
+
+        return arc();
+      }
+  }
+
+
+    radialHistogram.target = function(_) {
+      if (!arguments.length) { return target; }
+      target = _;
+      return radialHistogram;
+    }
+
+    radialHistogram.data = function(_) {
+      if (!arguments.length) { return data; }
+      data = _;
+      return radialHistogram;
+    }
+
+    radialHistogram.binShape = function(_) {
+      if (!arguments.length) { return binShape; }
+      binShape = _;
+      return radialHistogram;
+    }
+
+    // early range and late range are only used by the earlyLate histogram
+    radialHistogram.earlyRange = function(_) {
+      if (!arguments.length || !_) { return earlyRange; }
+      earlyRange = _.map(function (d) { return Math.round(d) - 1911; });
+      return radialHistogram;
+    }
+    radialHistogram.lateRange = function(_) {
+      if (!arguments.length || !_) { return lateRange; }
+      lateRange = _.map(function (d) { return Math.round(d) - 1911; });
+      return radialHistogram;
+    }
+
+    return radialHistogram;
+  }
+
+
+  function calcEarlyLateHistogram(data, binShape, tempRange, earlyRange, lateRange) {
+
+
+    dataEarly = data.filter(function (d) {
+      return (d.year > earlyRange[0] && d.year <= earlyRange[1]);
+    });
+
+    dataLate = data.filter(function (d) {
+      return (d.year > lateRange[0] && d.year <= lateRange[1]);
+    });
+
+    binDataEarly = calcHighLowHistogram(dataEarly, binShape, tempRange);
+    binDataLate  = calcHighLowHistogram(dataLate, binShape, tempRange);
+
+    binDataMerge = {};
+    binDataMerge.tmpBins = binDataEarly.tmpBins;
+    binDataMerge.dayBins = binDataEarly.dayBins;
+
+    binList = [];
+
+    binDataEarly.binList.forEach(function (bin, ind){
+
+      var bin_ = {};
+
+      bin_.doy = bin.doy;
+      bin_.tmp = bin.tmp;
+
+      bin_.tmaxCountEarly = binDataEarly.binList[ind].tmaxCount;
+      bin_.tminCountEarly = binDataEarly.binList[ind].tminCount;
+      bin_.tmaxCountLate  = binDataLate.binList[ind].tmaxCount;
+      bin_.tminCountLate  = binDataLate.binList[ind].tminCount;
+
+      binList.push(bin_);
+
+    });
+
+    binDataMerge.binList = binList;
+
+    return binDataMerge;
+
+  }
+
+  function calcHighLowHistogram(data, binShape, tempRange) {
+
+    var tmpBins = d3.range(tempRange[0], tempRange[1] + binShape.tempPerBin, binShape.tempPerBin);
+    var dayBins = d3.range(0, 365, binShape.daysPerBin);
+
+    //domain must be specified along with thresholds
+    var calcHistogram = d3.histogram().domain(tempRange).thresholds(tmpBins);
+
+    var hArray = dayBins.map(function(binEdge) {
+            
+            var data_ = data.filter(function(d) { 
+              return d.doy > binEdge && d.doy <= (binEdge + binShape.daysPerBin); 
+            });
+
+            return {
+                    counts: d3.zip(
+                      calcHistogram(data_.map(getField('tmin'))).map(getField('length')),
+                      calcHistogram(data_.map(getField('tmax'))).map(getField('length')) ),
+                    doy: binEdge,
+                  };
+    });
+
+    binList = [];
+
+    // list of counts at each day bin
+    hArray.map(function(dayRow, i) {
+
+      // count for each temperature bin
+      dayRow.counts.map(function(count, j) {
+
+        // add the histogram bin to the list if there's some nonzero temps
+        if (true) { //(count[0] || count[1]) {
+          binList.push({tminCount: count[0], tmaxCount: count[1], doy: dayBins[i], tmp: tmpBins[j] });
+        }
+
+      });
+    });
+
+    return {binList: binList, tmpBins: tmpBins, dayBins: dayBins};
+  }
+
+  function assignColorsToBins(binList, countName1, countName2, binColorFunction) {
+
+    var thresh = 0; //15;
+
+    var count1Max = d3.max(binList, getField(countName1)) - thresh,
+        count2Max = d3.max(binList, getField(countName2)) - thresh,
+        count1, count2,
+        count1Color, count2Color;
+
+    binList.forEach(function (bin) {
+
+      count1 = bin[countName1] > thresh ? bin[countName1] - thresh : 0;
+      count2 = bin[countName2] > thresh ? bin[countName2] - thresh : 0;
+
+      bin.color = "#ffffff";
+      bin.opacity = .5;
+
+      if (count1 || count2) {
+        bin.color = binColorFunction(count1/count1Max, count2/count2Max);
+        bin.opacity = 1;
+      }
+
+    });
+  }
+
+
+  function calcHighLowBinColor(density1, density2) {
+
+        var color1 = d3.interpolateBlues(density1);
+        var color2  = d3.interpolateReds(density2);
+
+        return d3.interpolateLab(color1, color2)(.5);
+
+  }
+
+  function calcEarlyLateBinColor(density1, density2) {
+
+        // this function is 1 when densities are nearly equal; zero elsewhere
+        var dd = Math.exp( -900*(1-Math.exp((density1 - density2)**2))**2 );
+
+        var color1 = d3.interpolateYlOrBr(density1);
+        var color2 = d3.interpolateYlGn(density2);
+
+        var color12 = density1 > density2 ? color1 : color2;
+        
+        color12Gray = d3.hsl(d3.color(color12));
+        color12Gray.s = 0;
+
+        return d3.interpolateLab(color12, color12Gray)(dd);
+  }
+
+
+
+
+  function getField(key) { return function(d) { return d[key]; } }
+
+
+
+  Date.prototype.getWeek = function() {
+      var janFirstThis = new Date(this.getFullYear(),0,1);
+      return Math.ceil((((this - janFirstThis) / 86400000) + janFirstThis.getDay()+1)/7);
+  } 
+
+  Array.prototype.last = function(){
+      return this[this.length - 1];
+  };
+
+  Array.prototype.copy = function(){
+      return this.slice(0);
+  }
+
+  Array.prototype.unique = function() {
+    var elementsAsKeys = {},
+        uniqueElements = [];
+    for (var i = 0; i < this.length; ++i) {
+        if (!elementsAsKeys.hasOwnProperty(this[i])) {
+            uniqueElements.push(this[i]);
+            elementsAsKeys[this[i]] = 1; // arbitrary value
+        }
+    }
+    return uniqueElements;
+}
+
+  // ** copied from MBTA viz **
+  // add utility to move an SVG selection to the front
+  d3.selection.prototype.moveToFront = function () {
+    return this.each(function () {
+      this.parentNode.appendChild(this);
+    });
+  };
+
+
+
+  </script>
+
+</body>
+</html>
