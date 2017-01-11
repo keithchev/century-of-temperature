@@ -189,11 +189,12 @@
 
   function loadTab(initialStationInfo) {
 
+    // clear the histogram controls div
     var histControls = d3.select("#histogram-controls-container");
+    histControls.selectAll("svg").remove();
 
     d3.selectAll(".tab").style("border", "none");
     d3.select("#" + TEMPS.currentTab.id).style("border-bottom", "4px solid #666");
-
 
     d3.select("#map-header").text(TEMPS.currentTab.mapHeader);
     d3.select("#histogram-header").text(TEMPS.currentTab.histogramHeader);
@@ -205,47 +206,19 @@
     // redraw the histogram from scratch and set its .update method
     TEMPS.radialHistogram[TEMPS.currentTab.method]();
 
-
-
     // set the current station
     // this updates the histogram (whose .update was set above) to the current station
     // (if initialStationInfo is null, reload the existing currentStation)
     TEMPS.currentStation.set(initialStationInfo);
 
-
-    histControls.selectAll("svg").remove();
-
-
-    // finally: load the tab-specific controls 
+    // load high-low specific controls 
     if (TEMPS.currentTab.id==="highs-lows") {
-
-      TEMPS.roadTripPath = [];
-      TEMPS.currentRoadTripIndex = 0;
-      
-      // mapControls.append("div")
-      //   .attrs({"class": "plot-button", "id": "button-back"})
-      //   .text("Back")
-      //   .on("click", onBack);
-
-      // mapControls.append("div")
-      //   .attrs({"class": "plot-button", "id": "button-forward"})
-      //   .text("Forward")
-      //   .on("click", onForward);
-
-      // function onForward() { 
-      //   TEMPS.currentRoadTripIndex = TEMPS.currentRoadTripIndex < (TEMPS.roadTrip.length - 1) ? TEMPS.currentRoadTripIndex + 1 : 0;
-      //   TEMPS.stationMap.updateRoadTripPath();
-      // }
-
-      // function onBack() {
-      //   TEMPS.currentRoadTripIndex = TEMPS.currentRoadTripIndex===0 ? TEMPS.roadTrip.length - 1 : TEMPS.currentRoadTripIndex - 1;
-      //   TEMPS.stationMap.updateRoadTripPath();
-      // }
 
     }
 
-    // draw the axis on which to select early and late time ranges
-    // and add button to toggle between tmin and tmax
+    // load change-specific controls
+    // make the axis on which to select early and late time ranges
+    // add a button to toggle between tmin and tmax
     if (TEMPS.currentTab.id==="changes") {
 
       var width    = 350;
@@ -297,10 +270,11 @@
       }
     }
 
+    if (TEMPS.currentTab.id==="changes-regional") {
+
+    }
 
   } //loadTab
-
-
 
 
   function makeCurrentStation() {
@@ -468,7 +442,6 @@
     }
 
 
-
     stationMap.markCurrentStation = function () {
 
       svg.selectAll(".map-station-dots")
@@ -479,64 +452,10 @@
 
     } // markCurrentStation
 
-    stationMap.updateRoadTripPath = function () {
-
-      // move forward
-      if (TEMPS.currentRoadTripIndex===lastRoadTripIndex + 1) {
-        TEMPS.roadTripPath.push(lineBetweenStations(lastRoadTripIndex, TEMPS.currentRoadTripIndex));
-      }
-
-      // move backward - remove last line
-      if (TEMPS.currentRoadTripIndex===lastRoadTripIndex - 1) {
-        TEMPS.roadTripPath = TEMPS.roadTripPath.slice(0, TEMPS.roadTripPath.length-1);
-      }
-
-      // stepped forward to 0 - erase path
-      if (TEMPS.currentRoadTripIndex===0 && lastRoadTripIndex===TEMPS.roadTrip.length - 1) {
-        TEMPS.roadTripPath = [];
-      }
-
-      // stepped back from 0 - draw entire path
-      if (TEMPS.currentRoadTripIndex===TEMPS.roadTrip.length - 1 && lastRoadTripIndex===0) {
-      }
-
-      var roadTrip = svg.selectAll("path.road-trip").data(TEMPS.roadTripPath);
-
-      roadTrip.enter().append("path")
-              .attr("class", "road-trip")
-            .merge(roadTrip)
-              .transition().duration(200)
-              .attr("d", mapPath);
-
-      roadTrip.exit().remove();
-
-      lastRoadTripIndex = TEMPS.currentRoadTripIndex;
-      TEMPS.currentStation.set(TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[TEMPS.currentRoadTripIndex].id)]);
-
-      return stationMap;
-
-      function lineBetweenStations(index1, index2) {
-
-        var station1 = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[index1].id)];
-        var station2 = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[index2].id)];
-
-        return lineData = {
-          type: "LineString",
-          coordinates: [ [station1.lon, station1.lat], [station2.lon, station2.lat] ],
-        };
-      }
-
-    } // stationMap.updateRoadTripPath
-
 
     return stationMap;
 
   } // loadStationMap
-
-
-
-
-
 
 
 

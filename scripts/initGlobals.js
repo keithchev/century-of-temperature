@@ -59,7 +59,7 @@
 	          	},
 	          	{
 	              	header: "Part 3", 
-	              	id: "changes-all", 
+	              	id: "changes-regional", 
 	              	method: "loadTab3", 
 	              	text: "Regional averages",
 	              	mapHeader: "",
