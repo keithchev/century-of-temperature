@@ -9,6 +9,7 @@
 
   <link rel="icon"          href="../favicon.ico" type="image/x-icon" />
   <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/css?family=Raleway|Open+Sans" rel="stylesheet">
   <!-- Bootstrap css -->
   <link href="./components/bootstrap/bootstrap.min.custom-breakpoint.css" rel="stylesheet">
   <!--  leaflet css -->
@@ -107,13 +108,16 @@
 
   <!-- third-party components -->
   <script src="./components/less/less.min.js"></script>
+  <script src="./components/leaflet/leaflet.js"></script>
+
+  <!-- d3 -->
   <script src="./components/d3.v4/d3.min.js"></script>
   <script src="./components/d3-tip/index.js"></script>
   <script src="./components/d3-scale-chromatic.v1.min.js"></script>
-  <script src="./components/leaflet/leaflet.js"></script>
-
   <script src="./components/topojson.v1.min.js"></script>
   <script src="./components/d3-selection-multi.min.js"></script>
+
+  <!-- load this app's global object -->
   <script src="./scripts/initGlobals.js"></script>
 
   <script>
@@ -565,7 +569,7 @@
     // station CSV filenames lack leading zeros
     if (stationID[0]==='0') stationID = stationID.slice(1); 
 
-    var stationFilename = './data/merge/station_' + stationID + '.csv';
+    var stationFilename = './data/stations/station_' + stationID + '.csv';
 
     d3.csv(stationFilename, function(err, data) {
 

@@ -1,5 +1,5 @@
 (function () {
-	
+
 	"use strict";
 
 	// global variable
@@ -61,7 +61,7 @@
 	              	header: "Part 3", 
 	              	id: "changes-all", 
 	              	method: "loadTab3", 
-	              	text: "Averaging over stations",
+	              	text: "Regional averages",
 	              	mapHeader: "",
 	              	histogramHeader: "",
 

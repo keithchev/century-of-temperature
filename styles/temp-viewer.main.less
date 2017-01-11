@@ -12,9 +12,22 @@
 @button-color-hover: #f7f7f7;
 @button-color-selected: #ddd;
 
-@debug-border: 1px;
+@debug-border: 0px;
 
-body { padding-top: 0px; }
+.main-font {
+  font-family: "Raleway", sans-serif; 
+}
+.header-font {
+  font-family: "Open sans", sans-serif;
+  font-weight: bold;
+}
+
+body { 
+  padding-top: 0px;
+  .main-font;
+}
+
+html { .main-font; }
 
 div { border: @debug-border solid #ff6666; }
 svg { border: @debug-border solid #6666ff; }
@@ -35,11 +48,10 @@ a:visited { color: @link-color; text-decoration: none; }
 h1,.h1,h2,.h2, h3,.h3 {
   margin-top: 0px; 
   margin-bottom: 10px;
-  font-weight: bold;
+  .header-font;
 }
 
 p {
-  font-family: sans-serif;
   font-size: 12px; 
 }
 
@@ -83,11 +95,12 @@ rect { shape-rendering: crispEdges; }
 }
 
 .tab-header {
-  font-weight: bold;
+  .header-font;
+  font-size: 16px;
   display: block;
 }
 .tab-text {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 
