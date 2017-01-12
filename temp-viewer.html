@@ -58,7 +58,7 @@
         <!-- left column: map -->
         <div class="col-sm-6 zero-pad-left">
           <h3 id="map-header"></h3>
-          <div class="col-sm-12 zero-pad-left" id="map-text"></div>
+          <div class="col-sm-12 zero-pad-left" id="map-text"><p></p></div>
           <div class="col-sm-12 zero-pad-left" id="map-controls-container"></div>
           <div class="col-sm-12 zero-pad-left" id="map-container"></div>
         </div>
@@ -67,8 +67,12 @@
         <!-- right column: histogram/plots -->        
         <div class="col-sm-6 zero-pad-left">
           <h3 id="histogram-header"></h3>
-          <div class="col-sm-12 zero-pad-left" id="histogram-text"></div>
+          <div class="col-sm-12 zero-pad-left" id="histogram-text"><p></p></div>
           <div class="col-sm-12 zero-pad-left" id="histogram-controls-container"></div>
+          <div class="col-sm-12 zero-pad-left" id="histogram-title">
+            <p id="histogram-title-name"></p>
+            <p id="histogram-title-elevation"></p>
+          </div>
           <div class="col-sm-12 zero-pad-left" id="histogram-container"></div>
         </div>
 
@@ -182,8 +186,8 @@
     d3.select("#map-header").text(TEMPS.currentTab.mapHeader);
     d3.select("#histogram-header").text(TEMPS.currentTab.histogramHeader);
 
-    d3.select("#map-text").text(TEMPS.currentTab.mapText);
-    d3.select("#histogram-text").text(TEMPS.currentTab.histogramText);
+    d3.select("#map-text").select("p").text(TEMPS.currentTab.mapText);
+    d3.select("#histogram-text").select("p").text(TEMPS.currentTab.histogramText);
 
     // update the map to the current Tab 
     // NEED TO REMOVE ROAD TRIP BUT RE-MARK CURRENT STATION
@@ -499,7 +503,7 @@
 
     var PI = Math.PI;
 
-    var target, svg, svgG, rScale, thScale, origin, axes, arcs, legend, label;
+    var target, title, svg, svgG, rScale, thScale, origin, axes, arcs, legend, label;
 
     var padL = 25, padR = 5, padT = 15, padB = 15;
 
@@ -510,29 +514,17 @@
         svgWidth    = svgHeight + legendWidth + 50;
        
     var data, binData, binShape, tempRange, earlyRange = [0,30], lateRange = [70,100];
-      
-      svg  = d3.select("#histogram-container").append("svg").attrs({width: svgWidth, height: svgHeight});
-      svgG = svg.append("g").attr("transform", "translate(" + padL + "," + padT + ")");
 
+      svg   = d3.select("#histogram-container").append("svg").attrs({width: svgWidth, height: svgHeight});
+      
+      svgG   = svg.append("g").attr("transform", "translate(" + padL + "," + padT + ")");
       origin = svgG.append("g").attr("transform", "translate(" + ( maxRadius) + "," + ( maxRadius) + ")");
-      // origin.append("circle").attr("r", 3);
 
       arcs = origin.append("g");
       axes = origin.append("g");
 
       rScale  = d3.scaleLinear().range([minRadius, maxRadius]);
       thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]);
-
-
-       label = svgG.append("g")
-                 .attr("id", "histogram-label")
-                 .attr("transform", "translate(" + (svgWidth - legendWidth - 90) + "," + "0)");
-
-       label.append("text")
-            .attrs({id: "high-low-histogram-label-name",x: 0, y: 12 });
-
-       label.append("text")
-            .attrs({id: "high-low-histogram-label-elevation", x: 0, y: 30});
 
       var legendSize     = legendWidth * .6,
           legendTickVals = d3.range(0,1,.1),
@@ -544,7 +536,7 @@
       var legendYPos_bottom = svgHeight - legendSize - 50;
 
       legend = svgG.append("g")
-                   .attr("id", "high-low-histogram-legend")
+                   .attr("id", "histogram-legend")
                    .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (legendYPos_bottom) + ")");
 
 
@@ -748,8 +740,8 @@
       axes.selectAll(".histogram-line").moveToFront();
       axes.selectAll(".histogram-text").moveToFront();
 
-      d3.select("#high-low-histogram-label-name").text(TEMPS.currentStation.get().name + ", " + TEMPS.currentStation.get().state);
-      d3.select("#high-low-histogram-label-elevation").text("Elevation: " + d3.format(".0f")(TEMPS.currentStation.get().alt) + " feet");
+      d3.select("#histogram-title-name").text(TEMPS.currentStation.get().name + ", " + TEMPS.currentStation.get().state);
+      d3.select("#histogram-title-elevation").text("Elevation: " + d3.format(".0f")(TEMPS.currentStation.get().alt) + " feet");
 
       function makeArc(bin) {
         var arc = d3.arc()
