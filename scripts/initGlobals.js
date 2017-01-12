@@ -57,16 +57,17 @@
 	              	method: "loadTab2", 
 	              	text: "Changes over time",
 	              	mapHeader: "Where have temperatures changed?",
-	              	histogramHeader: "Visualizing changes",
-	              	mapText: "",
+	              	histogramHeader: "Visualizing temperature changes",
+	              	mapText: "To visualize changes in temperature at each station, we can compare the mean high or low temperature during two different time intervals. Use the sliders to the right to select these time intervals; the dots below are colored according to the temperature difference at each station.",
+	              	histogramText: "",
 	          	},
 	          	{
 	              	header: "Part 3", 
 	              	id: "changes-regional", 
 	              	method: "loadTab3", 
 	              	text: "Regional averages",
-	              	mapHeader: "",
-	              	histogramHeader: "",
+	              	mapHeader: "Aggregating stations by region",
+	              	histogramHeader: "Visualizing aggregated data",
 
 	              },];
 

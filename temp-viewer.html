@@ -30,8 +30,8 @@
           <!-- tagline text -->
           <div class="col-sm-9">
             <p> 
-              At a small number of sites, weather observations have been continuously and reliably recorded for more than one hundred years. 
-              The temperature observations from these weather stations form one of the most longitudinally complete bodies of climate data in the world.
+              At a small number of sites, daily high and low temperatures have been continuously and reliably recorded 
+              for more than one hundred years, forming one of the most longitudinally complete bodies of climate data in the world.
             </p>
           </div>
 
@@ -129,33 +129,26 @@
     // list of all stations
     TEMPS.stationInfoList = stationInfoList;
 
+    // draw the tab divs (could be hard-coded, really)
     drawTabs();
 
-    // start at tab 1, obviously
+    // start at first tab, obviously - this should be 'highs/lows'
     TEMPS.currentTab = TEMPS.tabs[0];
 
     // initialize a current station getter/setter 
     TEMPS.currentStation = makeCurrentStation();
-
+    TEMPS.currentRoadTripIndex = 0;
 
     // *** MAP PANEL ***
     // US map with stations - this is fixed for all tabs (only station color changes)
     TEMPS.stationMap = loadStationMap();
 
-
-    TEMPS.roadTripPath = [];
-    TEMPS.currentRoadTripIndex = 0;
-
-
     // *** INITIALIZE HISTOGRAM ***
     // radial high/low temps heatmap
     TEMPS.radialHistogram = makeRadialHistogram();
 
-    // define the initial current station to the first one on the road trip
-    var initialStationInfo = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(TEMPS.roadTrip[TEMPS.currentRoadTripIndex].id)];
-
-    // finally, load the first tab
-    loadTab(initialStationInfo);
+    // finally, load the first tab, using first road trip stop as the initial station
+    loadTab(TEMPS.roadTrip[TEMPS.currentRoadTripIndex].id);
 
   });
 
@@ -176,7 +169,7 @@
     tabs.append("span").attr("class", "tab-text").text(getField("text"));
   }
 
-  function loadTab(initialStationInfo) {
+  function loadTab(initialStationID) {
 
     // clear the histogram controls div
     var histControls = d3.select("#histogram-controls-container");
@@ -201,7 +194,7 @@
     // set the current station
     // this updates the histogram (whose .update was set above) to the current station
     // (if initialStationInfo is null, reload the existing currentStation)
-    TEMPS.currentStation.set(initialStationInfo);
+    TEMPS.currentStation.set(initialStationID);
 
     // load high-low specific controls 
     if (TEMPS.currentTab.id==="highs-lows") {
@@ -274,8 +267,11 @@
     var currentStationInfo = {};
     function currentStation() {}
 
-    currentStation.set = function(stationInfo) {
-      if (arguments.length && stationInfo) currentStationInfo = stationInfo;
+    currentStation.set = function(stationID) {
+
+      if (arguments.length && stationID) {
+        currentStationInfo = TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(stationID)];
+      }
 
       // mark the station on the map
       TEMPS.stationMap.markCurrentStation();
@@ -365,11 +361,7 @@
           d3.select(this).attr("r", spotRadius).classed("map-station-dots-selected", false);
           stationTip.hide(d);
         })
-       .on("click", function(d) { 
-          d3.selectAll(".map-station-dots").attr("r", spotRadius).classed("map-station-dots-selected", false);
-          d3.select(this).attr("r", "4px").classed("map-station-dots-selected", true).moveToFront();
-          TEMPS.currentStation.set(d);
-        });
+       .on("click", function(d) {  TEMPS.currentStation.set(d.id); });
 
 
       // draw the table-like list of regions and representative stations
@@ -385,11 +377,9 @@
                   return TEMPS.roadTrip.filter(function (roadTripStop) { return region.region===roadTripStop.region; }); 
                 })
                 .enter().append("div")
-                .attrs({class: "road-trip-stop"})
+                .attrs({class: "road-trip-stop", id: getField('id')})
                 .text(getField("text"))
-                .on("click", function (d) {
-                    TEMPS.currentStation.set(TEMPS.stationInfoList[TEMPS.stationInfoList.map(getField('id')).indexOf(d.id)]); 
-                });
+                .on("click", function (d) { TEMPS.currentStation.set(d.id); });
 
 
     function stationMap() {}
@@ -437,10 +427,15 @@
     stationMap.markCurrentStation = function () {
 
       svg.selectAll(".map-station-dots")
-         .attr("fill", getField("color"))
+         .classed("map-station-dots-selected", false)
          .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().id; })
-         .attr("fill", "#ff6666")
+         .classed("map-station-dots-selected", true)
          .moveToFront();
+
+      d3.selectAll(".road-trip-stop")
+        .classed("road-trip-stop-selected", false)
+        .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().id; })
+        .classed("road-trip-stop-selected", true);
 
     } // markCurrentStation
 
