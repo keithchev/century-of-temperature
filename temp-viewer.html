@@ -359,11 +359,11 @@
           r: spotRadius
         })
        .on("mouseover", function(d) { 
-          d3.select(this).attr("r", 1*spotRadius).classed("map-station-dots-selected", true).moveToFront(); 
+          d3.select(this).attr("r", 1*spotRadius).classed("map-station-dots-hover", true).moveToFront(); 
           stationTip.show(d); 
         })
        .on("mouseout", function(d) { 
-          d3.select(this).attr("r", spotRadius).classed("map-station-dots-selected", false);
+          d3.select(this).attr("r", spotRadius).classed("map-station-dots-hover", false);
           stationTip.hide(d);
         })
        .on("click", function(d) {  TEMPS.currentStation.set(d.id); });
