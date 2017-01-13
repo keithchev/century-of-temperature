@@ -48,8 +48,8 @@
 					text: "Highs and lows",
 					mapHeader: "The stations",
 					histogramHeader: "Visualizing individual stations",
-					mapText: "These long-running stations are scattered throughout the US; a subset are shown here. Click on one of the map's dots to view its data, or click on one of the representative station locations listed below.",
- 				    histogramText: "Each station's dataset consists of daily minimum and maximum temperatures.  To visualize the distribution of these daily highs and lows throughout the year, we can construct a radial histogram in which angle corresponds to season and radial distance to temperature.",
+					mapText: "These long-running stations are scattered throughout the US. Click on one of the map's dots to view its data, or click on one of the representative station locations listed below.",
+ 				    histogramText: "To visualize the distribution of daily highs and lows throughout the year, we can construct a radial histogram in which angle corresponds to season and radial distance to temperature.",
 				}, 
 	          	{
 	              	header: "Part 2", 
@@ -58,7 +58,7 @@
 	              	text: "Changes over time",
 	              	mapHeader: "Where have temperatures changed?",
 	              	histogramHeader: "Visualizing temperature changes",
-	              	mapText: "To visualize changes in temperature at each station, we can compare the mean high or low temperature during two different time intervals. Use the sliders to the right to select these time intervals; the dots below are colored according to the temperature difference at each station.",
+	              	mapText: "Temperatures have changed at some stations more than others. Use the sliders to the right to select two time intervals; the dots below are colored according to the temperature difference between these intervals.",
 	              	histogramText: "",
 	          	},
 	          	{
