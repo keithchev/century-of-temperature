@@ -60,10 +60,10 @@
           <h3 id="map-header"></h3>
           <div class="col-sm-12 zero-pad-left" id="map-text"><p></p></div>
           <div class="col-sm-12 zero-pad-left" id="map-controls-container">
-            <div class="map-control-label">Color by: </div>
-            <div class="map-control-button" id="map-color-elevation">Elevation</div>
-            <div class="map-control-button" id="map-color-average-high">Average high</div>
-            <div class="map-control-button" id="map-color-average-low">Average low</div>
+            <div class="map-button-label">Color by: </div>
+            <div class="map-button" id="map-button-elevation">Elevation</div>
+            <div class="map-button" id="map-button-average-high">Average high</div>
+            <div class="map-button" id="map-button-average-low">Average low</div>
           </div>
           <div class="col-sm-12 zero-pad-left" id="map-container"></div>
           <div class="col-sm-12 zero-pad-left" id="map-roadtrip-container"></div>
@@ -375,11 +375,11 @@
        .on("click", function(d) {  TEMPS.currentStation.set(d.id); });
 
 
-      d3.selectAll(".map-control-button")
+      d3.selectAll(".map-button")
         .on("click", function (d) { 
           stationMap.setColorScale(d3.select(this).attr("id")); 
-          d3.selectAll(".map-control-button").classed("map-control-button-active", false);
-          d3.select(this).classed("map-control-button-active", true);
+          d3.selectAll(".map-button").classed("map-button-active", false);
+          d3.select(this).classed("map-button-active", true);
         });
 
       // draw the table-like list of regions and representative stations
@@ -405,6 +405,8 @@
     // transition map to Tab 1
     stationMap.loadTab1 = function () {
 
+      stationMap.setColorScale("map-button-elevation");
+
     }
 
     // transition the map to Tab 2
@@ -420,42 +422,43 @@
 
     stationMap.setColorScale = function (buttonID) {
 
-      var colorFunctions = {"map-color-elevation": colorByAlt, 
-                            "map-color-average-low": colorByAverage(18, 64), // min and max average lows
-                            "map-color-average-high": colorByAverage(49, 83) }; // min and max average highs
+      var id = buttonID;
 
-      var tickFunctions = {"map-color-elevation": function (d) { return d/1000; }, 
-                            "map-color-average-low": function (d) { return d + '°'; },
-                            "map-color-average-high": function (d) { return d + '°'; } };
-
-      var fieldNames = {"map-color-elevation": "alt", 
-                        "map-color-average-low": "mlow", 
-                        "map-color-average-high": "mhigh" };
-      
-      // hand-picked tick vals for each field
-      var tickVals = { "map-color-elevation": d3.range(0, 7500, 1500), 
-                       "map-color-average-low": d3.range(20, 70, 10),
-                       "map-color-average-high": d3.range(45, 95, 10), };
-
+      var button = {
+       "map-button-elevation": { color: colorByAlt, 
+                                 stationInfoKey: "alt",
+                                 tickFunc: function (d) { return d/1000; }, 
+                                 tickVals: d3.range(0, 7500, 1500) 
+                               },
+       "map-button-average-low": {color: colorByAverage(18, 64),
+                                  stationInfoKey: "mlow",
+                                  tickFunc: function (d) { return d + '°'; }, 
+                                  tickVals: d3.range(20, 70, 10)
+                                },
+       "map-button-average-high": {color: colorByAverage(49, 83), 
+                                  stationInfoKey: "mhigh",
+                                  tickFunc: function (d) { return d + '°'; }, 
+                                  tickVals: d3.range(45, 95, 10) }};
+       
         // color station dots by elevation by updating the color field
         // necessary so dots can be recolored on mouseover/out
         // (note: because this works, .data() must not return a copy of the bound data)
         svg.selectAll(".map-station-dots")
-           .data().forEach(function (d) { d.color = colorFunctions[buttonID](d[fieldNames[buttonID]]); });
+           .data().forEach(function (d) { d.color = button[id].color(d[button[id].stationInfoKey]); });
 
         // here we actually update the color
         svg.selectAll(".map-station-dots").transition().attr("fill", getField("color"));
 
         // draw the color scale bar for elevation 
-        appendColorScale(colorScaleG, scaleWidth, scaleHeight, tickVals[buttonID], colorFunctions[buttonID], tickFunctions[buttonID]);
+        appendColorScale(colorScaleG, scaleWidth, scaleHeight, button[id].tickVals, button[id].color, button[id].tickFunc);
 
         // customize the tick labels
-        if (buttonID==="map-color-elevation") {        
+        if (buttonID==="map-button-elevation") {        
           colorScaleG.select("text").text("Sea level");
           d3.select(colorScaleG.selectAll("text")._groups[0][1]).attr("visibility", "hidden");
 
           // add 'ft' to the topmost tick
-          d3.select(colorScaleG.selectAll("text")._groups[0][tickVals[buttonID].length-1])
+          d3.select(colorScaleG.selectAll("text")._groups[0][button[id].tickVals.length-1])
             .text( function() { return d3.select(this).text() + 'kft'; });
         }
 
