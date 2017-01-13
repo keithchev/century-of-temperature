@@ -123,6 +123,23 @@ def calcMeanOverTime(csvDir):
         meanByDay.to_csv(dest, index=False)
     
     
+def addMeansToMetadata(metadata):
+    
+    for ind, row in metadata.iterrows():
+        
+        id = list(str(row.id))
+        
+        id[0] = id[0].replace('0', '')
+        
+        print(''.join(id))
+        data = pd.read_csv('stations\\station_' + ''.join(id) + '_mean.csv')
+        
+        metadata.mhigh[ind] = data.tmax.mean()
+        metadata.mlow[ind] = data.tmin.mean()
+        
+    return metadata
+        
+    
 def simplify():
     
     # simplify the data by eliminating redundant date columns
@@ -157,7 +174,7 @@ def simplify():
             df_new.to_csv(localDestDir + subDir + 'station_' + str(station_id) + '.csv', index=False)            
             
             
-def merge():
+def mergetmintmax():
     
     # merge tmax and tmin files into one csv with tmax and tmin columns
     

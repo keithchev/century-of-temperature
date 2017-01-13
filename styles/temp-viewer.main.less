@@ -22,12 +22,12 @@
   font-weight: bold;
 }
 
+html { .main-font; }
+
 body { 
   padding-top: 0px;
   .main-font;
 }
-
-html { .main-font; }
 
 div { border: @debug-border solid #f66; }
 svg { border: @debug-border solid #66f; }
@@ -47,7 +47,7 @@ a:visited { color: @link-color; text-decoration: none; }
 // no header margins
 h1,.h1,h2,.h2, h3,.h3 {
   margin-top: 0px; 
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   .header-font;
 }
 
@@ -60,6 +60,10 @@ p {
 path { shape-rendering: auto; }
 rect { shape-rendering: crispEdges; }
 
+text {
+  font-size: 10px;
+  color: #333;
+}
 
 // ------------------------------------------------------
 // 
@@ -83,7 +87,6 @@ rect { shape-rendering: crispEdges; }
     padding-top: 0px;
   }
 }
-
 
 #main-container {
   max-width: 900px;
@@ -115,13 +118,33 @@ rect { shape-rendering: crispEdges; }
 
 // let the map overflow its div 
 #map-container {
-  margin-top: -40px;
+  margin-top: -0px;
   margin-left: -30px;
   margin-bottom: 00px;
 }
 #map-controls-container {
+  font-size: 12px;
+  padding-bottom: 0px;
+  padding-left: 50px;
+}
+
+#map-roadtrip-container {
+  margin-top: -15px;
+  margin-left: -15px;
   padding-bottom: 15px;
   text-align: center;
+}
+
+.map-control-label {
+  display: inline-block;
+}
+.map-control-button {
+  padding-left: 10px;
+  display: inline-block;
+  cursor: pointer;
+}
+.map-control-button-active {
+  font-weight: bold;
 }
 
 #map-text {
@@ -146,7 +169,7 @@ rect { shape-rendering: crispEdges; }
 }
 
 .map-station-dots-selected {
-  fill: #f66;
+  fill: purple;
   stroke-width: 1px;
 }
 
@@ -177,9 +200,9 @@ font-weight: bold;
 
 .road-trip-region {
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   float: left;
-  width: 60px;
+  width: 65px;
 }
 
 .road-trip-header {

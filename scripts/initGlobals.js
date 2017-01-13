@@ -6,7 +6,7 @@
 	var TEMPS = {};
 
 	// station metadata filename
-	TEMPS.metadataFilename = './data/USHCN-network-metadata.clean-crop.txt';
+	TEMPS.metadataFilename = './data/USHCN-network-metadata.clean.crop.means.txt';
 
 
 	// region names/labels
