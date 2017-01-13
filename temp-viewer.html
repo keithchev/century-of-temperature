@@ -132,6 +132,9 @@
       row.alt = +row.alt * 3.28;
       row.color = "#333" // initial map dot color;
 
+      // d3-selectable dom IDs can't begin with a number
+      row.domid = "id-" + row.id;
+
       row.name = row.name.replace('-', ' ');
 
       // capitalize the first letter of each word - from http://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript/
@@ -313,7 +316,7 @@
         projection = d3.geoAlbersUsa().translate([mapWidth/2, mapHeight/2]).scale(mapScale),
         mapPath    = d3.geoPath().projection(projection);
 
-    var spotRadius = 4;
+    var spotRadius = 3;
     var lastRoadTripIndex = 0;
 
     // colorscale for station dot colors
@@ -348,6 +351,7 @@
 
      // make sure dots are on top - asynchrony means states are probably drawn last
      svg.selectAll(".map-station-dots").moveToFront();
+     svg.selectAll(".map-station-dots-hidden").moveToFront();
 
     }); // d3.json
 
@@ -358,18 +362,28 @@
        .enter().append("circle")
        .attrs({
           class: "map-station-dots",
-          id: getField("id"),
+          id: function(d) { return "id-" + d.id; },
           cx: function(d) { return projection([d.lon, d.lat])[0]; },
           cy: function(d) { return projection([d.lon, d.lat])[1]; },
           fill: getField("color"),
           r: spotRadius
+        });
+
+    // overlay hidden larger dots to capture mouseover events
+    svg.selectAll(".map-station-dots-hidden").data(stationInfoList)
+       .enter().append("circle")
+       .attrs({
+          class: "map-station-dots-hidden",
+          cx: function(d) { return projection([d.lon, d.lat])[0]; },
+          cy: function(d) { return projection([d.lon, d.lat])[1]; },
+          r: 8,
         })
        .on("mouseover", function(d) { 
-          d3.select(this).attr("r", 1*spotRadius).classed("map-station-dots-hover", true).moveToFront(); 
+          d3.select("#" + d.domid).classed("map-station-dots-hover", true); //.moveToFront(); 
           stationTip.show(d); 
         })
        .on("mouseout", function(d) { 
-          d3.select(this).attr("r", spotRadius).classed("map-station-dots-hover", false);
+          d3.select("#" + d.domid).classed("map-station-dots-hover", false);
           stationTip.hide(d);
         })
        .on("click", function(d) {  TEMPS.currentStation.set(d.id); });
@@ -395,7 +409,7 @@
                   return TEMPS.roadTrip.filter(function (roadTripStop) { return region.region===roadTripStop.region; }); 
                 })
                 .enter().append("div")
-                .attrs({class: "road-trip-stop", id: getField('id')})
+                .attrs({class: "road-trip-stop", id: getField('domid')})
                 .text(getField("text"))
                 .on("click", function (d) { TEMPS.currentStation.set(d.id); });
 
@@ -506,13 +520,13 @@
 
       svg.selectAll(".map-station-dots")
          .classed("map-station-dots-selected", false)
-         .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().id; })
+         .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().domid; })
          .classed("map-station-dots-selected", true)
          .moveToFront();
 
       d3.selectAll(".road-trip-stop")
         .classed("road-trip-stop-selected", false)
-        .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().id; })
+        .filter(function (d) { return d3.select(this).attr("id")===TEMPS.currentStation.get().domid; })
         .classed("road-trip-stop-selected", true);
 
     } // markCurrentStation
