@@ -317,11 +317,11 @@
     var lastRoadTripIndex = 0;
 
     // colorscale for station dot colors
-    var scaleHeight = 100,
-        scaleWidth  = 10,
+    var scaleHeight = 10,
+        scaleWidth  = 100,
         colorScaleG = svg.append("g")
                          .attr("id", "map-colorbar-axis")
-                         .attr("transform", "translate(" + (mapWidth-scaleWidth) + "," + (mapHeight-scaleHeight-50) + ")");
+                         .attr("transform", "translate(" + (25) + "," + (mapHeight-scaleHeight-30) + ")");
                
      // hover tip for station dots
     var stationTip = d3.tip().attr("class", "d3-tip").offset([-10,0]);
@@ -424,6 +424,10 @@
                             "map-color-average-low": colorByAverage(18, 64), // min and max average lows
                             "map-color-average-high": colorByAverage(49, 83) }; // min and max average highs
 
+      var tickFunctions = {"map-color-elevation": function (d) { return d/1000; }, 
+                            "map-color-average-low": function (d) { return d + '°'; },
+                            "map-color-average-high": function (d) { return d + '°'; } };
+
       var fieldNames = {"map-color-elevation": "alt", 
                         "map-color-average-low": "mlow", 
                         "map-color-average-high": "mhigh" };
@@ -443,15 +447,16 @@
         svg.selectAll(".map-station-dots").transition().attr("fill", getField("color"));
 
         // draw the color scale bar for elevation 
-        appendColorScale(colorScaleG, scaleWidth, scaleHeight, tickVals[buttonID], colorFunctions[buttonID]);
+        appendColorScale(colorScaleG, scaleWidth, scaleHeight, tickVals[buttonID], colorFunctions[buttonID], tickFunctions[buttonID]);
 
         // customize the tick labels
         if (buttonID==="map-color-elevation") {        
           colorScaleG.select("text").text("Sea level");
+          d3.select(colorScaleG.selectAll("text")._groups[0][1]).attr("visibility", "hidden");
 
           // add 'ft' to the topmost tick
-          d3.select(colorScaleG.selectAll("text")._groups[0][tickVals.length-1])
-            .text( function() { return d3.select(this).text() + '+ft'; });
+          d3.select(colorScaleG.selectAll("text")._groups[0][tickVals[buttonID].length-1])
+            .text( function() { return d3.select(this).text() + 'kft'; });
         }
 
       function colorByAlt(alt) {
@@ -463,27 +468,30 @@
         return function (average) { return d3.interpolateRdBu( 1 - (average - min) / (max - min)); };
       }
 
-      function appendColorScale(target, scaleWidth, scaleHeight, tickVals, colorFunction) {
+      function appendColorScale(target, scaleWidth, scaleHeight, tickVals, colorFunction, tickFunction) {
 
         // this makes the 1d color scale for the map
-        var barScale    = d3.scaleLinear().domain([d3.min(tickVals), d3.max(tickVals)]).range([scaleHeight, 0]),
-             barAxis    = d3.axisLeft(barScale).tickValues(tickVals).tickSize(0,0),
-             rectHeight = barScale(tickVals[0]) - barScale(tickVals[1]);
+        var barScale    = d3.scaleLinear()
+                            .domain([d3.min(tickVals), d3.max(tickVals)]).range([0, scaleWidth]),
+             barAxis    = d3.axisBottom(barScale).tickValues(tickVals).tickSize(0,0).tickFormat(tickFunction),
+             rectHeight = Math.abs(barScale(tickVals[0]) - barScale(tickVals[1]));
 
         target.call(barAxis);
+
+        target.selectAll("path").attr("visibility", "hidden");
        
         var rects = target.selectAll("rect").data(tickVals);
 
         rects.enter().append("rect")
           .attrs({
             class: "map-colorbar-rect",
-            x: 0,
-            height: rectHeight, 
-            width: scaleWidth,
+            y: -scaleHeight,
+            width: rectHeight, 
+            height: scaleHeight,
           })
           .merge(rects).transition()
           .attrs({
-            y: function(tickVal) { return barScale(tickVal) - rectHeight/2; },
+            x: function(tickVal) { return barScale(tickVal) - rectHeight/2; },
             fill: function(tickVal) { return colorFunction(tickVal); }
           })
       }
