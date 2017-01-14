@@ -585,13 +585,12 @@
     var pad = 15;
     var svg  = d3.select("#histogram-controls-container").append("svg").attrs({width: width, height: height});
 
-    var timeRange = [new Date("1/1/1911"), new Date("12/31/2010")];
+    var tDomain = [new Date("1/1/1911"), new Date("12/31/2010")],
+        yDomain = [-40, 100],
+        yTickVals = [-30, 0, 32, 60, 90];
 
-    var tScale = d3.scaleTime().range([pad, width-2*pad]).domain(timeRange);
-    var yScale    = d3.scaleLinear().range([pad, height-2*pad]);
-
-    var tickVals = d3.range(1920, 2020, 10);
-    tickVals.unshift(1911);
+    var tScale = d3.scaleTime().range([pad, width-2*pad]).domain(tDomain);
+    var yScale = d3.scaleLinear().range([pad, height-2*pad]).domain([yDomain[1], yDomain[0]]);
 
     var svgG = svg.append("g").attr("transform", "translate(" + pad + "," + pad + ")");
 
@@ -604,41 +603,44 @@
     var lineMin = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmin); });
     var lineMax = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmax); });
     var lineMean = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.mean); });
+    var mouseLine = d3.line().x(getField("x")).y(getField("y"));
 
-    var pathMin = svgG.append("path")
-                      .attrs({class: "line-plot-path", id: "path-tmin", stroke: d3.interpolateBlues(.7)});
-    
-    var pathMax = svgG.append("path")
-                      .attrs({class: "line-plot-path", id: "path-tmax", stroke: d3.interpolateReds(.7)});
+    svgG.append("path").attrs({class: "line-plot-path", id: "path-tmin", stroke: d3.interpolateBlues(.7)});
+    svgG.append("path").attrs({class: "line-plot-path", id: "path-tmax", stroke: d3.interpolateReds(.7)});
+
+    svgG.append("path").attrs({class: "line-plot-path", id: "mouse-position-path"});
 
     tAxis.call(d3.axisBottom(tScale).tickSize(0,0));
+    yAxis.call(d3.axisLeft(yScale).tickSize(-width + pad, 0).tickValues(yTickVals).tickFormat(appendDegreeSign));
 
     function linePlot() {}
 
     linePlot.update = function () {
 
-      var data = TEMPS.data.filter(function(d, i) { return !(i % 30); });
-
-      data = data.filter(function (d) { return d.tmin!=0 && d.tmax!=0; });
+      var data = TEMPS.data.filter(function (d, i) { return !(i % 30); })
+                           .filter(function (d, i) { return d.tmin!=0 && d.tmax!=0; });
 
       data.forEach( function (d) { d.mean = (d.tmin + d.tmax)/2; })
 
-      var yMin = -40, //d3.min(data, getField("mean"));
-          yMax = 100; //d3.max(data, getField("mean"));
-          tickVals = [-30, 0, 32, 60, 90];
-
-      yScale.domain([yMax, yMin]);
-
-      yAxis.call(d3.axisLeft(yScale).tickSize(-width + pad, 0).tickValues(tickVals).tickFormat(appendDegreeSign));
-
-      pathMin.transition().attr("d", lineMin(data));
-      pathMax.transition().attr("d", lineMax(data));
-
-
-
+      d3.select("#path-tmin").transition().attr("d", lineMin(data));
+      d3.select("#path-tmax").transition().attr("d", lineMax(data));
     }
 
     linePlot.showHover = function () {
+  
+      svgG.selectAll(".brush-container").remove();
+
+      svgG.select("#mouse-position-path").attr("visibility", "visible");
+      svg.on("mousemove", mousemove);
+
+      function mousemove() {
+
+        var mouseX = d3.mouse(svg.node())[0] - pad;
+        var mouseLineData = [{x: mouseX, y: yScale.range()[0]}, {x: mouseX, y: yScale.range()[1]}];
+        d3.select("#mouse-position-path").attr("d", mouseLine(mouseLineData));
+
+        TEMPS.radialHistogram.drawLine(tScale.invert(mouseX).getUTCFullYear);
+      }
 
     }
 
@@ -646,6 +648,8 @@
     linePlot.showBrushes = function () {
 
       svgG.selectAll(".brush-container").remove();
+      svgG.select("#mouse-position-path").attr("visibility", "hidden");
+      svg.on("mousemove", null);
 
       var brushEarly = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
       var brushLate  = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
@@ -784,49 +788,41 @@
     function radialHistogram() {}
 
     radialHistogram.loadTab1 = function () {
-
-      // remove existing bins since bin size/number is going to change
-      arcs.selectAll(".histogram-bin").remove();
-
-      tempRange   = [-20, 110];
-      rTickValues = [0, 32, 60, 90, 110];
-
-      // draw the axes
-      drawAxes(tempRange, rTickValues);
-
+      tempRange    = [-20, 110];
+      rTickValues  = [0, 32, 60, 90, 110];
       calcBinColor = calcHighLowBinColor;
       binShape     = {daysPerBin: 5, tempPerBin: 5}; // bin size
 
-      // set the update function for drawing highs and lows
+      // update function for drawing highs/lows
       radialHistogram.update = drawHighsLows;
+      resetHistogram();
 
-      drawLegend(calcBinColor);
-
+      drawLegend(calcBinColor, "Frequency of highs", "Frequency of lows");
     }
 
-
     radialHistogram.loadTab2 = function () {
+      tempRange    = [0, 70];
+      rTickValues  = [30, 60];
+      calcBinColor = calcEarlyLateBinColor;
+      binShape     = {daysPerBin: 10, tempPerBin: 5}; // bin size
+
+      // update function for drawing early/late
+      radialHistogram.update = drawEarlyLate;
+      resetHistogram();
+
+      drawLegend(calcBinColor, "Relative recent frequency", "Relative historical frequency");
+    }
+
+    function resetHistogram() {
 
       // remove existing bins since bin size/number is going to change
       arcs.selectAll(".histogram-bin").remove();
 
-      tempRange = [0, 70];
-      rTickValues = [30, 60];
-
       // draw the axes
       drawAxes(tempRange, rTickValues);
-
-      calcBinColor = calcEarlyLateBinColor;
-      binShape     = {daysPerBin: 10, tempPerBin: 5}; // bin size
-
-      // set the update function for drawing highs and lows
-      radialHistogram.update = drawEarlyLate;
-
-      drawLegend(calcBinColor);
-
     }
 
-      function drawLegend(calcBinColor) {
+    function drawLegend(calcBinColor, text1, text2) {
 
       var legendData = [];
       legendTickVals.map(function (tickX) {
@@ -846,20 +842,16 @@
               width: rectSize, height: rectSize,
               fill: getField("color"),
             });
+
+      legendG.selectAll("text").remove();
             
       legendG.append("text")
-            .attrs({
-              x: -legendSize/2 - rectSize/2,
-              y: -3,
-              transform: "rotate(-90)"
-            })
-            .text("Frequency of highs");
+            .attrs({x: -legendSize/2 - rectSize/2, y: -3, transform: "rotate(-90)"})
+            .text(text1);
 
       legendG.append("text")
-            .attr("x", legendSize/2 + rectSize/2)
-            .attr("y", legendSize + rectSize + 8)
-            .text("Frequency of lows");
-
+            .attrs({x: legendSize/2 + rectSize/2, y: legendSize + rectSize + 8})
+            .text(text2);
     }
 
     function drawHighsLows() {
