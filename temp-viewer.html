@@ -278,6 +278,7 @@
         scaleWidth  = 100,
         colorScaleG = svg.append("g")
                          .attr("id", "map-colorbar-axis")
+                         .attr("class", "axis")
                          .attr("transform", "translate(" + (25) + "," + (mapHeight-scaleHeight-30) + ")");
       
     // -----------------------------------------------------
@@ -296,13 +297,13 @@
                              },
      "map-button-average-low": {color: colorByAverage(18, 64),
                                 stationInfoKey: "mlow",
-                                tickFunc: function (d) { return d + '°'; }, 
+                                tickFunc: appendDegreeSign, 
                                 tickVals: d3.range(20, 70, 10),
                                 text: "Average low",
                               },
      "map-button-average-high": {color: colorByAverage(49, 83), 
                                 stationInfoKey: "mhigh",
-                                tickFunc: function (d) { return d + '°'; }, 
+                                tickFunc: appendDegreeSign, 
                                 tickVals: d3.range(45, 95, 10),
                                 text: "Average high", } };
 
@@ -595,10 +596,10 @@
     var svgG = svg.append("g").attr("transform", "translate(" + pad + "," + pad + ")");
 
     var tAxis = svgG.append("g")
-                    .attrs({class: "axis", id: "t-axis", transform: "translate(" + 0 + "," + (height - 2*pad - 5) + ")"});
+                    .attrs({class: "line-plot-axis", id: "t-axis", transform: "translate(" + 0 + "," + (height - 2*pad - 5) + ")"});
 
     var yAxis = svgG.append("g")
-                    .attrs({class: "axis", id: "y-axis", transform: "translate(" + 0 + "," + 0 + ")"});
+                    .attrs({class: "line-plot-axis", id: "y-axis", transform: "translate(" + pad + "," + 0 + ")"});
 
     var lineMin = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmin); });
     var lineMax = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmax); });
@@ -616,21 +617,22 @@
 
     linePlot.update = function () {
 
-      var data = TEMPS.data.filter(function(d, i) { return !(i % 15); });
+      var data = TEMPS.data.filter(function(d, i) { return !(i % 30); });
 
       data = data.filter(function (d) { return d.tmin!=0 && d.tmax!=0; });
 
       data.forEach( function (d) { d.mean = (d.tmin + d.tmax)/2; })
 
-      yMin = d3.min(data, getField("mean"));
-      yMax = d3.max(data, getField("mean"));
+      var yMin = -40, //d3.min(data, getField("mean"));
+          yMax = 100; //d3.max(data, getField("mean"));
+          tickVals = [-30, 0, 32, 60, 90];
 
-      yScale.domain([100, -30]);
+      yScale.domain([yMax, yMin]);
 
-      yAxis.call(d3.axisLeft(yScale).tickSize(0,0));
+      yAxis.call(d3.axisLeft(yScale).tickSize(-width + pad, 0).tickValues(tickVals).tickFormat(appendDegreeSign));
 
-      pathMin.transition().attr("d", lineMean(data));
-      //pathMax.transition().attr("d", lineMax(data));
+      pathMin.transition().attr("d", lineMin(data));
+      pathMax.transition().attr("d", lineMax(data));
 
 
 
@@ -656,8 +658,8 @@
           .attr("class", "brush-container")
           .attr("id", "brush-late").call(brushLate);
 
-      brushEarly.move(d3.select("#brush-early"), [1911, 1940].map(timeScale)); 
-      brushLate.move(d3.select("#brush-late"), [1980, 2010].map(timeScale)); 
+      brushEarly.move(d3.select("#brush-early"), [new Date("1/1/1911"), new Date("1/1/1940")].map(tScale)); 
+      brushLate.move(d3.select("#brush-late"), [new Date("1/1/1980"), new Date("1/1/2010")].map(tScale)); 
 
       // allows cursor to access both brushes, but prevents re-brushing in a new region
       d3.selectAll(".overlay").style("pointer-events", "none");
@@ -667,8 +669,8 @@
         var earlyRange = d3.brushSelection(d3.select("#brush-early").node());
         var lateRange  = d3.brushSelection(d3.select("#brush-late").node());
 
-        earlyRange = earlyRange!==null ? earlyRange.map(timeScale.invert) : null;
-        lateRange = lateRange!==null ? lateRange.map(timeScale.invert) : null;
+        earlyRange = earlyRange!==null ? earlyRange.map(tScale.invert) : null;
+        lateRange = lateRange!==null ? lateRange.map(tScale.invert) : null;
 
         // careful - this won't work if data hasn't loaded yet 
         if (earlyRange!==null && lateRange!==null){
@@ -722,11 +724,10 @@
         legendXScale   = d3.scaleLinear().range([0, legendSize]).domain([0, d3.max(legendTickVals)]),
         legendYScale   = d3.scaleLinear().range([legendSize, 0]).domain([0, d3.max(legendTickVals)]),
         rectSize       = legendXScale(legendTickVals[1]) - legendXScale(legendTickVals[0]),
-        legendData     = [];
 
-    var legend = svgG.append("g")
-                     .attr("id", "histogram-legend")
-                     .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (svgHeight - legendSize - 50) + ")");
+        legendG = svgG.append("g")
+                      .attr("id", "histogram-legend")
+                      .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (svgHeight - legendSize - 50) + ")");
 
 
     //re-draws the radial histogram axes for given rTickValues
@@ -751,7 +752,7 @@
             .attr("class", "radius-axis histogram-text")
             .attr("x", function (d) { return -rScale(d + 0) * Math.cos(PI/4); })
             .attr("y", function (d) { return -rScale(d + 0) * Math.sin(PI/4); })
-            .text(function (d) { return d + '°'; });
+            .text(appendDegreeSign);
 
       
       var thTickStop   = rScale(d3.max(rTickValues)) + 2;
@@ -799,39 +800,10 @@
       // set the update function for drawing highs and lows
       radialHistogram.update = drawHighsLows;
 
-
-      // draw the legend - move to its own function?
-      legendData = [];
-      legendTickVals.map(function (tickX) {
-        legendTickVals.map(function (tickY) {
-          legendData.push( {x: legendXScale(tickX), y: legendYScale(tickY), color: calcBinColor(tickX, tickY) });
-        });
-      });
-
-      legend.selectAll("rect").data(legendData)
-            .enter().append("rect")
-            .attrs({
-              class: "histogram-legend-rect",
-              x: getField("x"),
-              y: getField("y"),
-              width: rectSize, height: rectSize,
-              fill: getField("color"),
-            });
-            
-      legend.append("text")
-            .attrs({
-              x: -legendSize/2 - rectSize/2,
-              y: -3,
-              transform: "rotate(-90)"
-            })
-            .text("Frequency of highs");
-
-      legend.append("text")
-            .attr("x", legendSize/2 + rectSize/2)
-            .attr("y", legendSize + rectSize + 8)
-            .text("Frequency of lows");
+      drawLegend(calcBinColor);
 
     }
+
 
     radialHistogram.loadTab2 = function () {
 
@@ -847,37 +819,47 @@
       calcBinColor = calcEarlyLateBinColor;
       binShape     = {daysPerBin: 10, tempPerBin: 5}; // bin size
 
-
       // set the update function for drawing highs and lows
       radialHistogram.update = drawEarlyLate;
 
-      // draw the legend - move to its own function?
-      legendData = [];
+      drawLegend(calcBinColor);
+
+    }
+
+      function drawLegend(calcBinColor) {
+
+      var legendData = [];
       legendTickVals.map(function (tickX) {
         legendTickVals.map(function (tickY) {
           legendData.push( {x: legendXScale(tickX), y: legendYScale(tickY), color: calcBinColor(tickX, tickY) });
         });
       });
 
-      legend.selectAll("rect").data(legendData)
-            .enter().append("rect")
-            .attr("class", "histogram-legend-rect")
-            .attr("x", getField("x"))
-            .attr("y", getField("y"))
-            .attr("width", rectSize)
-            .attr("height", rectSize)
-            .attr("fill", getField("color"));
+      var legend = legendG.selectAll("rect").data(legendData);
 
-      legend.append("text")
-            .attr("x", -legendSize/2 - rectSize/2)
-            .attr("y", -3)
-            .attr("transform", "rotate(-90)")
+      legend.enter().append("rect")
+            .merge(legend).transition()
+            .attrs({
+              class: "histogram-legend-rect",
+              x: getField("x"),
+              y: getField("y"),
+              width: rectSize, height: rectSize,
+              fill: getField("color"),
+            });
+            
+      legendG.append("text")
+            .attrs({
+              x: -legendSize/2 - rectSize/2,
+              y: -3,
+              transform: "rotate(-90)"
+            })
             .text("Frequency of highs");
 
-      legend.append("text")
+      legendG.append("text")
             .attr("x", legendSize/2 + rectSize/2)
             .attr("y", legendSize + rectSize + 8)
             .text("Frequency of lows");
+
     }
 
     function drawHighsLows() {
@@ -959,13 +941,13 @@
     // early range and late range are only used by the earlyLate histogram
     radialHistogram.earlyRange = function(_) {
       if (!arguments.length || !_) { return earlyRange; }
-      earlyRange = _.map(function (d) { return Math.round(d) - 1911; });
+      earlyRange = _.map(function (d) { return d.getUTCFullYear() - 1911; });
       return radialHistogram;
     }
 
     radialHistogram.lateRange = function(_) {
       if (!arguments.length || !_) { return lateRange; }
-      lateRange = _.map(function (d) { return Math.round(d) - 1911; });
+      lateRange = _.map(function (d) { return d.getUTCFullYear() - 1911; });
       return radialHistogram;
     }
 
@@ -1105,7 +1087,7 @@
 
 
 
-
+  function appendDegreeSign (d) { return d + '°'; }
   function getField(key) { return function(d) { return d[key]; } }
 
   Date.prototype.getWeek = function() {
