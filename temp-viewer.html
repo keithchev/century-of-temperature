@@ -155,6 +155,8 @@
     // US map with stations - this is fixed for all tabs (only station color changes)
     TEMPS.stationMap = loadStationMap();
 
+    TEMPS.linePlot = makeLinePlot();
+
     // *** INITIALIZE HISTOGRAM ***
     // radial high/low temps heatmap
     TEMPS.radialHistogram = makeRadialHistogram();
@@ -183,10 +185,6 @@
 
   function loadTab(initialStationID) {
 
-    // clear the histogram controls div
-    var histControls = d3.select("#histogram-controls-container");
-    histControls.selectAll("svg").remove();
-
     d3.selectAll(".tab").style("border", "none");
     d3.select("#" + TEMPS.currentTab.id).style("border-bottom", "4px solid #666");
 
@@ -211,61 +209,20 @@
     // load high-low specific controls 
     if (TEMPS.currentTab.id==="highs-lows") {
 
+      TEMPS.linePlot.showHover();
+
     }
 
     // load change-specific controls
-    // make the axis on which to select early and late time ranges
-    // add a button to toggle between tmin and tmax
+    // add a button to histogram to toggle between tmin and tmax
+    // add a button to the map to color by change in average high/low
     if (TEMPS.currentTab.id==="changes") {
 
-      var width    = 350;
-      var height   = 60;
-      var pad = 15;
-      var svg  = histControls.append("svg").attrs({width: width, height: height});
+      TEMPS.linePlot.showBrushes();
 
-      var timeRange = [1911, 2010];
 
-      var timeScale = d3.scaleLinear().range([pad, width-2*pad]).domain(timeRange);
-
-      var tickVals = d3.range(1920, 2020, 10);
-      tickVals.unshift(1911);
-
-      var svgG = svg.append("g").attr("transform", "translate(" + pad + "," + pad + ")");
-      var axis = svgG.append("g").attr("transform", "translate(" + 0 + "," + (height - 2*pad - 5) + ")");
-
-      axis.call(d3.axisBottom(timeScale).tickValues(tickVals).tickFormat(function (tick) { return tick + ""; }));
-
-      var brushEarly = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
-      var brushLate  = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
-
-      svgG.append("g")
-         .attr("class", "brush-container")
-         .attr("id", "brush-early").call(brushEarly);
-
-      svgG.append("g")
-          .attr("class", "brush-container")
-          .attr("id", "brush-late").call(brushLate);
-
-      brushEarly.move(d3.select("#brush-early"), [1911, 1940].map(timeScale)); 
-      brushLate.move(d3.select("#brush-late"), [1980, 2010].map(timeScale)); 
-
-      // allows cursor to access both brushes, but prevents re-brushing in a new region
-      d3.selectAll(".overlay").style("pointer-events", "none");
-
-      function brushed() {
-
-        var earlyRange = d3.brushSelection(d3.select("#brush-early").node());
-        var lateRange  = d3.brushSelection(d3.select("#brush-late").node());
-
-        earlyRange = earlyRange!==null ? earlyRange.map(timeScale.invert) : null;
-        lateRange = lateRange!==null ? lateRange.map(timeScale.invert) : null;
-
-        // careful - this won't work if data hasn't loaded yet 
-        if (earlyRange!==null && lateRange!==null){
-          TEMPS.radialHistogram.earlyRange(earlyRange).lateRange(lateRange).update();
-        }
-      }
     }
+
 
     if (TEMPS.currentTab.id==="changes-regional") {
 
@@ -323,8 +280,6 @@
                          .attr("id", "map-colorbar-axis")
                          .attr("transform", "translate(" + (25) + "," + (mapHeight-scaleHeight-30) + ")");
       
-
-
     // -----------------------------------------------------
     //
     // Colorbar buttons
@@ -364,7 +319,6 @@
       .attr("id", function (d) { return d; })
       .text(function (d) { return mapButtons[d].text; })
       .on("click", mapButtonHandler);
-
 
     // -----------------------------------------------------
     //
@@ -475,8 +429,7 @@
     function stationMap() {}
 
     stationMap.loadTab1 = function () {
-      // set the colorscale to elevation
-      mapButtonHandler("map-button-elevation");
+
     }
 
     stationMap.loadTab2 = function () {
@@ -581,6 +534,8 @@
     } // markCurrentStation
 
 
+    // set the initial colorscale to elevation
+    mapButtonHandler("map-button-elevation");
     return stationMap;
 
   } // loadStationMap
@@ -595,6 +550,8 @@
 
     var stationID = TEMPS.currentStation.get().id;
 
+    var msPerDay = 1000*60*60*24;
+
     // station CSV filenames lack leading zeros
     if (stationID[0]==='0') stationID = stationID.slice(1); 
 
@@ -603,19 +560,127 @@
     d3.csv(stationFilename, function(err, data) {
 
       data.forEach(function (row) {
+
         row.year = +row.year;
         row.doy  = +row.doy;
         row.tmin = +row.tmin;
         row.tmax = +row.tmax;
+        row.date = new Date("1/1/" + (row.year + 1911));
+        row.date.setTime(row.date.getTime() + row.doy * msPerDay)
       });
 
       TEMPS.data = data;
 
+      TEMPS.linePlot.update();
       TEMPS.radialHistogram.data(data).update();
-
     });
-
   }
+
+
+  function makeLinePlot() {
+
+    var width    = 420;
+    var height   = 100;
+    var pad = 15;
+    var svg  = d3.select("#histogram-controls-container").append("svg").attrs({width: width, height: height});
+
+    var timeRange = [new Date("1/1/1911"), new Date("12/31/2010")];
+
+    var tScale = d3.scaleTime().range([pad, width-2*pad]).domain(timeRange);
+    var yScale    = d3.scaleLinear().range([pad, height-2*pad]);
+
+    var tickVals = d3.range(1920, 2020, 10);
+    tickVals.unshift(1911);
+
+    var svgG = svg.append("g").attr("transform", "translate(" + pad + "," + pad + ")");
+
+    var tAxis = svgG.append("g")
+                    .attrs({class: "axis", id: "t-axis", transform: "translate(" + 0 + "," + (height - 2*pad - 5) + ")"});
+
+    var yAxis = svgG.append("g")
+                    .attrs({class: "axis", id: "y-axis", transform: "translate(" + 0 + "," + 0 + ")"});
+
+    var lineMin = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmin); });
+    var lineMax = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.tmax); });
+    var lineMean = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.mean); });
+
+    var pathMin = svgG.append("path")
+                      .attrs({class: "line-plot-path", id: "path-tmin", stroke: d3.interpolateBlues(.7)});
+    
+    var pathMax = svgG.append("path")
+                      .attrs({class: "line-plot-path", id: "path-tmax", stroke: d3.interpolateReds(.7)});
+
+    tAxis.call(d3.axisBottom(tScale).tickSize(0,0));
+
+    function linePlot() {}
+
+    linePlot.update = function () {
+
+      var data = TEMPS.data.filter(function(d, i) { return !(i % 15); });
+
+      data = data.filter(function (d) { return d.tmin!=0 && d.tmax!=0; });
+
+      data.forEach( function (d) { d.mean = (d.tmin + d.tmax)/2; })
+
+      yMin = d3.min(data, getField("mean"));
+      yMax = d3.max(data, getField("mean"));
+
+      yScale.domain([100, -30]);
+
+      yAxis.call(d3.axisLeft(yScale).tickSize(0,0));
+
+      pathMin.transition().attr("d", lineMean(data));
+      //pathMax.transition().attr("d", lineMax(data));
+
+
+
+    }
+
+    linePlot.showHover = function () {
+
+    }
+
+
+    linePlot.showBrushes = function () {
+
+      svgG.selectAll(".brush-container").remove();
+
+      var brushEarly = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
+      var brushLate  = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
+
+      svgG.append("g")
+         .attr("class", "brush-container")
+         .attr("id", "brush-early").call(brushEarly);
+
+      svgG.append("g")
+          .attr("class", "brush-container")
+          .attr("id", "brush-late").call(brushLate);
+
+      brushEarly.move(d3.select("#brush-early"), [1911, 1940].map(timeScale)); 
+      brushLate.move(d3.select("#brush-late"), [1980, 2010].map(timeScale)); 
+
+      // allows cursor to access both brushes, but prevents re-brushing in a new region
+      d3.selectAll(".overlay").style("pointer-events", "none");
+
+      function brushed() {
+
+        var earlyRange = d3.brushSelection(d3.select("#brush-early").node());
+        var lateRange  = d3.brushSelection(d3.select("#brush-late").node());
+
+        earlyRange = earlyRange!==null ? earlyRange.map(timeScale.invert) : null;
+        lateRange = lateRange!==null ? lateRange.map(timeScale.invert) : null;
+
+        // careful - this won't work if data hasn't loaded yet 
+        if (earlyRange!==null && lateRange!==null){
+          TEMPS.radialHistogram.earlyRange(earlyRange).lateRange(lateRange).update();
+        }
+      }
+
+    } // showBrushes
+
+    return linePlot;
+  } // makeLinePlot
+
 
   function makeRadialHistogram() {
 
@@ -643,8 +708,8 @@
         arcs   = origin.append("g"),
         axes   = origin.append("g");
 
-    rScale  = d3.scaleLinear().range([minRadius, maxRadius]);
-    thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]);
+    var rScale  = d3.scaleLinear().range([minRadius, maxRadius]),
+        thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]);
 
     // -----------------------------------------------------
     //
@@ -664,11 +729,14 @@
                      .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (svgHeight - legendSize - 50) + ")");
 
 
-    function drawAxes () {
+    //re-draws the radial histogram axes for given rTickValues
+    function drawAxes (tempRange, rTickValues) {
 
       axes.selectAll("circle").remove();
       axes.selectAll("text").remove();
       axes.selectAll("path").remove();
+
+      rScale.domain(tempRange);
 
       // add radial (temperature) ticks
       axes.selectAll("radius-axis.histogram-line")
@@ -719,15 +787,18 @@
       // remove existing bins since bin size/number is going to change
       arcs.selectAll(".histogram-bin").remove();
 
-      tempRange = [-20, 110];
-      
-      rScale.domain(tempRange);
-
+      tempRange   = [-20, 110];
       rTickValues = [0, 32, 60, 90, 110];
 
-      calcBinColor = calcHighLowBinColor;
+      // draw the axes
+      drawAxes(tempRange, rTickValues);
 
-      binShape = {daysPerBin: 5, tempPerBin: 5}; // bin size
+      calcBinColor = calcHighLowBinColor;
+      binShape     = {daysPerBin: 5, tempPerBin: 5}; // bin size
+
+      // set the update function for drawing highs and lows
+      radialHistogram.update = drawHighsLows;
+
 
       // draw the legend - move to its own function?
       legendData = [];
@@ -760,13 +831,6 @@
             .attr("y", legendSize + rectSize + 8)
             .text("Frequency of lows");
 
-
-      // draw the axes
-      drawAxes();
-
-      // set the update function for drawing highs and lows
-      radialHistogram.update = drawHighsLows;
-
     }
 
     radialHistogram.loadTab2 = function () {
@@ -775,13 +839,17 @@
       arcs.selectAll(".histogram-bin").remove();
 
       tempRange = [0, 70];
-      rScale.domain(tempRange);
-
       rTickValues = [30, 60];
 
-      calcBinColor = calcEarlyLateBinColor;
+      // draw the axes
+      drawAxes(tempRange, rTickValues);
 
-      binShape = {daysPerBin: 10, tempPerBin: 5}; // bin size
+      calcBinColor = calcEarlyLateBinColor;
+      binShape     = {daysPerBin: 10, tempPerBin: 5}; // bin size
+
+
+      // set the update function for drawing highs and lows
+      radialHistogram.update = drawEarlyLate;
 
       // draw the legend - move to its own function?
       legendData = [];
@@ -810,14 +878,6 @@
             .attr("x", legendSize/2 + rectSize/2)
             .attr("y", legendSize + rectSize + 8)
             .text("Frequency of lows");
-
-
-      // draw the axes
-      drawAxes();
-
-      // set the update function for drawing highs and lows
-      radialHistogram.update = drawEarlyLate;
-
     }
 
     function drawHighsLows() {
@@ -835,7 +895,6 @@
       return;
     }
 
-
     function drawEarlyLate() {
 
       if (data===undefined) return;
@@ -848,7 +907,7 @@
       return;
     }
 
-   function drawBins(binData) {
+    function drawBins(binData) {
 
       var bins = arcs.selectAll(".histogram-bin").data(binData.binList);
 
@@ -876,7 +935,7 @@
 
         return arc();
       }
-  }
+    }
 
 
     radialHistogram.target = function(_) {
@@ -903,6 +962,7 @@
       earlyRange = _.map(function (d) { return Math.round(d) - 1911; });
       return radialHistogram;
     }
+
     radialHistogram.lateRange = function(_) {
       if (!arguments.length || !_) { return lateRange; }
       lateRange = _.map(function (d) { return Math.round(d) - 1911; });
@@ -910,7 +970,7 @@
     }
 
     return radialHistogram;
-  }
+  } // makeRadialHistogram
 
 
   function calcEarlyLateHistogram(data, binShape, tempRange, earlyRange, lateRange) {
@@ -951,7 +1011,6 @@
     binDataMerge.binList = binList;
 
     return binDataMerge;
-
   }
 
   function calcHighLowHistogram(data, binShape, tempRange) {
@@ -1020,14 +1079,12 @@
     });
   }
 
-
   function calcHighLowBinColor(density1, density2) {
 
         var color1 = d3.interpolateBlues(density1);
         var color2  = d3.interpolateReds(density2);
 
         return d3.interpolateLab(color1, color2)(.5);
-
   }
 
   function calcEarlyLateBinColor(density1, density2) {
@@ -1050,8 +1107,6 @@
 
 
   function getField(key) { return function(d) { return d[key]; } }
-
-
 
   Date.prototype.getWeek = function() {
       var janFirstThis = new Date(this.getFullYear(),0,1);
