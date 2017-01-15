@@ -561,25 +561,37 @@
     d3.csv(stationFilename, function(err, data) {
 
       data.forEach(function (row) {
-
         row.year = +row.year;
         row.doy  = +row.doy;
         row.tmin = +row.tmin;
         row.tmax = +row.tmax;
+        // calculate the date from the year and doy
         row.date = new Date("1/1/" + (row.year + 1911));
         row.date.setTime(row.date.getTime() + row.doy * msPerDay)
       });
 
-      TEMPS.data = data;
 
-      TEMPS.linePlot.update();
-      TEMPS.radialHistogram.data(data).update();
+      TEMPS.data = data.filter(function (d, i) { return d.tmin!=0 && d.tmax!=0; });
+
+      TEMPS.data7 = TEMPS.data.filter(function (d, i) { return !(i % 7); });
+
+      TEMPS.data7.forEach(function (d, i) {
+        if (i > 1 && i < TEMPS.data7.length-1) {
+          d.tmin = d3.mean(TEMPS.data7.slice(i - 2, i + 3), getField("tmin"));
+          d.tmax = d3.mean(TEMPS.data7.slice(i - 2, i + 3), getField("tmax"));
+        }
+      });
+      TEMPS.data28 = TEMPS.data7.filter(function (d, i) { return !(i % 4); });
+
+      TEMPS.linePlot.data(TEMPS.data28).update();
+      TEMPS.radialHistogram.data(TEMPS.data).update();
     });
   }
 
 
   function makeLinePlot() {
 
+    var data;
     var width    = 420;
     var height   = 100;
     var pad = 15;
@@ -605,10 +617,9 @@
     var lineMean = d3.line().x(function (d) { return tScale(d.date); }).y(function (d) { return yScale(d.mean); });
     var mouseLine = d3.line().x(getField("x")).y(getField("y"));
 
-    svgG.append("path").attrs({class: "line-plot-path", id: "path-tmin", stroke: d3.interpolateBlues(.7)});
-    svgG.append("path").attrs({class: "line-plot-path", id: "path-tmax", stroke: d3.interpolateReds(.7)});
-
-    svgG.append("path").attrs({class: "line-plot-path", id: "mouse-position-path"});
+    svgG.append("path").attrs({class: "line-plot-path color-tmin", id: "line-plot-path-tmin"});
+    svgG.append("path").attrs({class: "line-plot-path color-tmax", id: "line-plot-path-tmax"});
+    svgG.append("path").attrs({class: "line-plot-path", id: "line-plot-mouse-path"});
 
     tAxis.call(d3.axisBottom(tScale).tickSize(0,0));
     yAxis.call(d3.axisLeft(yScale).tickSize(-width + pad, 0).tickValues(yTickVals).tickFormat(appendDegreeSign));
@@ -617,33 +628,26 @@
 
     linePlot.update = function () {
 
-      var data = TEMPS.data.filter(function (d, i) { return !(i % 30); })
-                           .filter(function (d, i) { return d.tmin!=0 && d.tmax!=0; });
-
-      data.forEach( function (d) { d.mean = (d.tmin + d.tmax)/2; })
-
-      d3.select("#path-tmin").transition().attr("d", lineMin(data));
-      d3.select("#path-tmax").transition().attr("d", lineMax(data));
+      d3.select("#line-plot-path-tmin").transition().attr("d", lineMin(data));
+      d3.select("#line-plot-path-tmax").transition().attr("d", lineMax(data));
     }
 
     linePlot.showHover = function () {
   
       svgG.selectAll(".brush-container").remove();
 
-      svgG.select("#mouse-position-path").attr("visibility", "visible");
+      svgG.select("#line-plot-mouse-path").attr("visibility", "visible");
       svg.on("mousemove", mousemove);
 
       function mousemove() {
 
         var mouseX = d3.mouse(svg.node())[0] - pad;
         var mouseLineData = [{x: mouseX, y: yScale.range()[0]}, {x: mouseX, y: yScale.range()[1]}];
-        d3.select("#mouse-position-path").attr("d", mouseLine(mouseLineData));
+        d3.select("#line-plot-mouse-path").attr("d", mouseLine(mouseLineData));
 
-        TEMPS.radialHistogram.drawLine(tScale.invert(mouseX).getUTCFullYear);
+        TEMPS.radialHistogram.drawLine(tScale.invert(mouseX).getUTCFullYear());
       }
-
     }
-
 
     linePlot.showBrushes = function () {
 
@@ -684,6 +688,12 @@
 
     } // showBrushes
 
+    linePlot.data = function (_) {
+      if (!arguments.length) { return data; }
+      data = _;
+      return linePlot;
+    }
+
     return linePlot;
   } // makeLinePlot
 
@@ -712,10 +722,14 @@
         svgG   = svg.append("g").attr("transform", "translate(" + padL + "," + padT + ")"),
         origin = svgG.append("g").attr("transform", "translate(" + ( maxRadius) + "," + ( maxRadius) + ")"),
         arcs   = origin.append("g"),
-        axes   = origin.append("g");
+        axes   = origin.append("g"),
+        mousePath = origin.append("path").attrs({class: "line-plot-path", id: "histogram-mouse-path"});
 
     var rScale  = d3.scaleLinear().range([minRadius, maxRadius]),
-        thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]);
+        thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]),
+        mouseLine = d3.line()
+                      .x(function (d) { return rScale(d.tmin)*Math.sin(thScale(d.doy)); })
+                      .y(function (d) { return -rScale(d.tmin)*Math.cos(thScale(d.doy)); });
 
     // -----------------------------------------------------
     //
@@ -810,7 +824,7 @@
       radialHistogram.update = drawEarlyLate;
       resetHistogram();
 
-      drawLegend(calcBinColor, "Relative recent frequency", "Relative historical frequency");
+      drawLegend(calcBinColor, "More frequent now", "More frequent then");
     }
 
     function resetHistogram() {
@@ -909,6 +923,19 @@
 
         return arc();
       }
+    }
+
+    radialHistogram.drawLine = function (year) {
+      // method called by lineplot's mouseover function
+      // draw a line plot of temperatures from the mouse position's year over the histogram
+
+      var iYear = year - 1911 - 1,
+          fYear = year - 1911;
+
+      var mouseData = data.filter(function (d) { return d.year >= iYear && d.year < fYear });
+
+      mousePath.transition().attr("d", mouseLine(mouseData));
+
     }
 
 

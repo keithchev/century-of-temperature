@@ -272,9 +272,10 @@ font-weight: bold;
   opacity: .5;
 }
 
-#mouse-position-path {
-  stroke: #333;
-}
+.color-tmin { stroke: rgb(47, 126, 188); }
+.color-tmax { stroke: rgb(217, 39, 35); }
+
+#line-plot-mouse-path { stroke: #333; }
 
 .line-plot-axis path {
   stroke-width: .5px;
@@ -282,8 +283,8 @@ font-weight: bold;
 }
 
 .line-plot-axis line { 
-stroke-width: .5px;
-stroke: #ccc;
+  stroke-width: .5px;
+  stroke: #ccc;
 }
 
 // brush rectangles
@@ -323,7 +324,12 @@ stroke: #ccc;
 
 .histogram-bin { stroke: none; }
 
-
+#histogram-mouse-path {
+  stroke-width: .5px;
+  fill: none;
+  opacity: .5;
+  stroke: #333;
+}
 
 
 
