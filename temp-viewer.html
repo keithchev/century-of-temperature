@@ -36,31 +36,27 @@
           </div>
 
           <!-- about/links -->
-          <div class="col-sm-3 zero-pad-left">
-            <div id="header-links-container">
-              <p>
+          <div class="col-sm-3 zero-pad-left" id="header-links-container">
                 <a href="http://kchev.org">kchev.org</a> | 
                 <a href="https://github.com/keithchev/">github</a>
-              </p>
-            </div>
           </div>
       
       </div> <!-- end row -->
       <div class="row" id="tabs-container"></div>
     </div> <!-- end main container -->
 
-  <div class="container main-container">
+  <div class="container" id="main-container">
 
     <div class="row">
 
-      <div class="col-sm-12">
+      <div class="col-sm-12 zero-pad-left">
 
         <!-- left column: map -->
         <div class="col-sm-6 zero-pad-left">
           <h3 id="map-header"></h3>
           <div class="col-sm-12 zero-pad-left" id="map-text"><p></p></div>
           <div class="col-sm-12 zero-pad-left" id="map-controls-container">
-            <div class="map-button-label">Color by: </div>
+            <div class="map-button-label">Color: </div>
           </div>
           <div class="col-sm-12 zero-pad-left" id="map-container"></div>
           <div class="col-sm-12 zero-pad-left" id="map-roadtrip-container"></div>
@@ -138,6 +134,10 @@
       row.name = row.name.replace(/\w\S*/g, function (txt) { return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(); });
     });
 
+    TEMPS.roadTrip.forEach(function (row) {
+      row.domid = "id-" + row.id;
+    });
+
     // list of all stations
     TEMPS.stationInfoList = stationInfoList;
 
@@ -149,7 +149,7 @@
 
     // initialize a current station getter/setter 
     TEMPS.currentStation = makeCurrentStation();
-    TEMPS.currentRoadTripIndex = 0;
+    TEMPS.currentRoadTripIndex = TEMPS.roadTrip.length-1;
 
     // *** MAP PANEL ***
     // US map with stations - this is fixed for all tabs (only station color changes)
@@ -185,8 +185,8 @@
 
   function loadTab(initialStationID) {
 
-    d3.selectAll(".tab").style("border", "none");
-    d3.select("#" + TEMPS.currentTab.id).style("border-bottom", "4px solid #666");
+    d3.selectAll(".tab").classed("tab-active", false);
+    d3.select("#" + TEMPS.currentTab.id).classed("tab-active", true);
 
     d3.select("#map-header").text(TEMPS.currentTab.mapHeader);
     d3.select("#histogram-header").text(TEMPS.currentTab.histogramHeader);
@@ -592,9 +592,9 @@
   function makeLinePlot() {
 
     var data;
-    var width    = 420;
+    var width    = 450;
     var height   = 100;
-    var pad = 15;
+    var pad = 10;
     var svg  = d3.select("#histogram-controls-container").append("svg").attrs({width: width, height: height});
 
     var tDomain = [new Date("1/1/1911"), new Date("12/31/2010")],
@@ -704,10 +704,10 @@
     var padL = 25, padR = 5, padT = 15, padB = 15;
 
     var minRadius   = 30,
-        maxRadius   = 140,
-        legendWidth = 120,
-        svgHeight   = maxRadius * 2 + padL + padR, 
-        svgWidth    = svgHeight + legendWidth + 50;
+        maxRadius   = 160,
+        legendWidth = 75,
+        svgHeight   = maxRadius * 2 + padT + padB, 
+        svgWidth    = svgHeight + legendWidth + padL + padR;
        
     // variables with setter/getter methods
     var target, data, binData, binShape, tempRange, earlyRange = [0,30], lateRange = [70,100];
@@ -723,13 +723,15 @@
         origin = svgG.append("g").attr("transform", "translate(" + ( maxRadius) + "," + ( maxRadius) + ")"),
         arcs   = origin.append("g"),
         axes   = origin.append("g"),
-        mousePath = origin.append("path").attrs({class: "line-plot-path", id: "histogram-mouse-path"});
+        tminPath = origin.append("path").attrs({class: "histogram-path", id: "histogram-path-tmin"});
+        tmaxPath = origin.append("path").attrs({class: "histogram-path", id: "histogram-path-tmax"});
 
     var rScale  = d3.scaleLinear().range([minRadius, maxRadius]),
         thScale = d3.scaleLinear().range([0, 2*Math.PI]).domain([1,365]),
-        mouseLine = d3.line()
-                      .x(function (d) { return rScale(d.tmin)*Math.sin(thScale(d.doy)); })
-                      .y(function (d) { return -rScale(d.tmin)*Math.cos(thScale(d.doy)); });
+        tmLine = function (tm) { 
+                      return d3.line()
+                      .x(function (d) { return rScale(d[tm])*Math.sin(thScale(d.doy)); })
+                      .y(function (d) { return -rScale(d[tm])*Math.cos(thScale(d.doy)); }); };
 
     // -----------------------------------------------------
     //
@@ -737,15 +739,15 @@
     //
     // -----------------------------------------------------
 
-    var legendSize     = legendWidth * .6,
+    var legendPad = 50,
         legendTickVals = d3.range(0,1,.1),
-        legendXScale   = d3.scaleLinear().range([0, legendSize]).domain([0, d3.max(legendTickVals)]),
-        legendYScale   = d3.scaleLinear().range([legendSize, 0]).domain([0, d3.max(legendTickVals)]),
+        legendXScale   = d3.scaleLinear().range([0, legendWidth]).domain([0, d3.max(legendTickVals)]),
+        legendYScale   = d3.scaleLinear().range([legendWidth, 0]).domain([0, d3.max(legendTickVals)]),
         rectSize       = legendXScale(legendTickVals[1]) - legendXScale(legendTickVals[0]),
 
         legendG = svgG.append("g")
                       .attr("id", "histogram-legend")
-                      .attr("transform", "translate(" + (svgWidth - legendWidth - 50) + "," + (svgHeight - legendSize - 50) + ")");
+                      .attr("transform", "translate(" + (svgWidth - legendWidth - legendPad) + "," + (0 + 0*(svgHeight - legendWidth - legendPad + 15)) + ")");
 
 
     //re-draws the radial histogram axes for given rTickValues
@@ -860,11 +862,11 @@
       legendG.selectAll("text").remove();
             
       legendG.append("text")
-            .attrs({x: -legendSize/2 - rectSize/2, y: -3, transform: "rotate(-90)"})
+            .attrs({x: -legendWidth/2 - rectSize/2, y: -3, transform: "rotate(-90)"})
             .text(text1);
 
       legendG.append("text")
-            .attrs({x: legendSize/2 + rectSize/2, y: legendSize + rectSize + 8})
+            .attrs({x: legendWidth/2 + rectSize/2, y: legendWidth + rectSize + 8})
             .text(text2);
     }
 
@@ -932,9 +934,10 @@
       var iYear = year - 1911 - 1,
           fYear = year - 1911;
 
-      var mouseData = data.filter(function (d) { return d.year >= iYear && d.year < fYear });
+      var lineData = data.filter(function (d) { return d.year >= iYear && d.year < fYear });
 
-      mousePath.transition().attr("d", mouseLine(mouseData));
+      tminPath.transition().attr("d", tmLine("tmin")(lineData));
+      tmaxPath.transition().attr("d", tmLine("tmax")(lineData));
 
     }
 

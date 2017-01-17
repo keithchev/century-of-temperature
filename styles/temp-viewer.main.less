@@ -5,21 +5,21 @@
 @lgray: #eee;
 @dgray: #333;
 
+@text-color: @dgray;
+
 @border-color: #ddd;
 @border-width: 3px;
 
-@button-color: #eee;
-@button-color-hover: #f7f7f7;
-@button-color-selected: #ddd;
-
-@debug-border: 1px;
+@debug-border: 0px;
 
 .main-font {
   font-family: "Raleway", sans-serif; 
+  font-color: @text-color;
 }
 .header-font {
   font-family: "Open sans", sans-serif;
   font-weight: bold;
+  font-color: @text-color;
 }
 
 html { .main-font; }
@@ -62,7 +62,7 @@ rect { shape-rendering: crispEdges; }
 text {
   font-family: "Raleway", sans-serif;
   font-size: 9px;
-  color: #333;
+  color: @text-color;
 }
 
 
@@ -83,16 +83,18 @@ text {
 }
 
 #header-links-container {
-  padding-top: 0px;
+  padding-top: 45px;
+  text-align: right;
   @media(max-width: 768px) {
     padding-top: 0px;
   }
+  height: 100%;
 }
 
 #main-container {
-  max-width: 900px;
   margin-bottom: 0px;
-  margin-top: 30px;
+  margin-top: 10px;
+  padding-bottom: 50px;
 }
 
 #tabs-container {
@@ -104,11 +106,16 @@ text {
   .header-font;
   font-size: 18px;
   display: block;
+  margin-bottom: -5px;
 }
+
 .tab-text {
   font-size: 13px;
 }
 
+.tab-active {
+  border-bottom: 4px solid #666;
+}
 
 
 // ------------------------------------------------------
@@ -120,18 +127,18 @@ text {
 // let the map overflow its div 
 #map-container {
   margin-top: -0px;
-  margin-left: -30px;
-  margin-bottom: 00px;
+  margin-left: -10px;
+  margin-bottom: 0px;
 }
+
 #map-controls-container {
-  font-size: 12px;
+  font-size: 14px;
   padding-bottom: 0px;
-  padding-left: 50px;
 }
 
 #map-roadtrip-container {
   margin-top: -15px;
-  margin-left: -15px;
+  margin-left: 0px;
   padding-bottom: 15px;
   text-align: center;
 }
@@ -146,10 +153,11 @@ text {
 }
 .map-button-active {
   font-weight: bold;
+  border-bottom: 2px solid #666;
 }
 
 #map-text {
-  height: 110px;
+  height: 90px;
 }
 
 .map-land { fill: #d9d9d9; }
@@ -182,6 +190,10 @@ text {
 .map-station-dots-hover {
   stroke: white;
   stroke-width: 2px;
+}
+
+#map-container text {
+  font-size: 11px;
 }
 
 
@@ -231,22 +243,27 @@ font-weight: bold;
 
 .road-trip-stop-selected {
   font-weight: bold;
+  &:hover {
+    color: @text-color;
+  }
 }
 
-.brush-container 
-.overlay {
-  pointer-events: none;
-  background-color: red;
-}
+
 // ------------------------------------------------------
 // 
 // radial-histogram plots
 //
 // ------------------------------------------------------
 
+.brush-container 
+.overlay {
+  pointer-events: none;
+  background-color: red;
+}
+
 #histogram-container {
-  margin-top: -30px;
-  margin-left: 10px;
+  margin-top: -15px;
+  margin-left: 0px;
   margin-bottom: 0px;
 }
 
@@ -257,34 +274,40 @@ font-weight: bold;
   font-size: 12px;
   border: 1px solid #ccc;
   cursor: pointer;
-  color: #333;
   font-weight: normal;
   text-align: center;
   &:hover {
     background-color: #e9e9e9;
   }
-
 }
 
 .line-plot-path {
   fill: none;
-  stroke-width: .5px;
+  stroke-width: 1px;
   opacity: .5;
 }
+
+
 
 .color-tmin { stroke: rgb(47, 126, 188); }
 .color-tmax { stroke: rgb(217, 39, 35); }
 
-#line-plot-mouse-path { stroke: #333; }
+#line-plot-mouse-path { 
+  stroke: #333; 
+}
 
 .line-plot-axis path {
-  stroke-width: .5px;
+  stroke-width: 1px;
   visibility: hidden;
 }
 
 .line-plot-axis line { 
-  stroke-width: .5px;
+  stroke-width: 1px;
   stroke: #ccc;
+}
+
+.line-plot-axis text {
+  font-size: 10px;
 }
 
 // brush rectangles
@@ -292,16 +315,16 @@ font-weight: bold;
   fill: #aaa;
 }
 
+// histogram axis lines
 .histogram-line { 
   stroke: #999; 
   fill: none;
   opacity: 0.7;
-  stroke-width: 0.5px;
+  stroke-width: .5px;
   shape-rendering: auto; 
 }
 
 .histogram-text {
-  color: #333;
   font-size: 10px;
   text-anchor: middle;
 }
@@ -309,7 +332,6 @@ font-weight: bold;
 #histogram-legend text {
   font-size: 10px;
   text-anchor: middle;
-  color: #333;
 }
 
 #histogram-title-name {
@@ -324,10 +346,10 @@ font-weight: bold;
 
 .histogram-bin { stroke: none; }
 
-#histogram-mouse-path {
+.histogram-path {
   stroke-width: .5px;
   fill: none;
-  opacity: .5;
+  opacity: .7;
   stroke: #333;
 }
 
