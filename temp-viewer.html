@@ -636,8 +636,17 @@
   
       svgG.selectAll(".brush-container").remove();
 
-      svgG.select("#line-plot-mouse-path").attr("visibility", "visible");
+      svg.on("mouseover", function () {
+          d3.select("#line-plot-mouse-path").attr("visibility", "visible");
+          d3.selectAll(".histogram-path").attr("visibility", "visible");
+      });
+
       svg.on("mousemove", mousemove);
+
+      svg.on("mouseout", function () {
+          d3.select("#line-plot-mouse-path").attr("visibility", "hidden");
+          d3.selectAll(".histogram-path").attr("visibility", "hidden");
+      });
 
       function mousemove() {
 
@@ -652,8 +661,7 @@
     linePlot.showBrushes = function () {
 
       svgG.selectAll(".brush-container").remove();
-      svgG.select("#mouse-position-path").attr("visibility", "hidden");
-      svg.on("mousemove", null);
+      svg.on("mouseover mousemove mouseout", null);
 
       var brushEarly = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
       var brushLate  = d3.brushX().extent([[pad, 0], [width-2*pad, height-2*pad-5]]).on("brush start end", brushed);
