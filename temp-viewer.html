@@ -1102,7 +1102,7 @@
   function calcEarlyLateBinColor(density1, density2) {
 
         // this function is 1 when densities are nearly equal; zero elsewhere
-        var dd = Math.exp( -900*(1-Math.exp((density1 - density2)**2))**2 );
+        var dd = Math.exp( -900*Math.pow(1-Math.exp(Math.pow(density1 - density2, 2)), 2) );
 
         var color1 = d3.interpolateYlOrBr(density1);
         var color2 = d3.interpolateYlGn(density2);
