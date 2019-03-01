@@ -6,11 +6,7 @@ January 2017<br>
 See the live version [here](http://kchev.org/temps) or click below. 
 
 <a href="http://kchev.org/temps">
-<<<<<<< HEAD
 <img width="600px" src="http://kchev.org/temps/img/temps-screenshot.png" alt="screenshot">
-=======
-<img width="600px" src="http://kchev.org/temps/img/screenshot.jpg" alt="screenshot">
->>>>>>> github/master
 </a>
 
 ## Introduction
