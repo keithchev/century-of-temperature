@@ -1,15 +1,13 @@
 # One hundred years of temperature
-======================
 
-By [Keith Cheveralls](http://kchev.org/) <tt>&lt;[keith.chev@gmail.com](mailto:keith.chev@gmail.com)&gt;</tt><br>
-January 2017<br>
-See the live version [here](http://kchev.org/temps) or click below. 
-
-<a href="http://kchev.org/temps">
-<img width="600px" src="http://kchev.org/temps/img/temps-screenshot.png" alt="screenshot">
-</a>
+__[Keith Cheveralls](http://kchev.org/)__<br>
+<tt>__[keith.chev@gmail.com](mailto:keith.chev@gmail.com)__</tt><br>
+__January 2017__<br>
 
 ## Introduction
 
-Interactive web visualization of the USHCN dataset - a record of daily high/low temperatures
-at a network of weather stations across the US that date back to 1911. 
+Interactive web visualization of the USHCN dataset, which is a record of daily high and low temperatures
+at weather stations across the US dating back to 1911. Live version [here](http://kchev.org/temps). 
+
+<img width="600px" src="http://kchev.org/temps/img/temps-screenshot.png" alt="screenshot">
+
