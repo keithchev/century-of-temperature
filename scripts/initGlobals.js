@@ -25,18 +25,19 @@
 		{id: "374266", text: "Kingston", region: "ec"},
 		{id: "280325", text: "Atlantic City", region: "ec"},
 		{id: "381549", text: "Charleston", region: "ec"},
-		{id: "083186", text: "Fort Meyers", region: "gc"},
+		{id: "83186", text: "Fort Meyers", region: "gc"},
 		{id: "410639", text: "Beeville", region: "gc"},
 		{id: "291469", text: "Carlsbad", region: "sw"},
-		{id: "029287", text: "Wickenburg", region: "sw"},
-		{id: "046719", text: "Pasadena", region: "wc"},
-		{id: "047916", text: "Santa Cruz", region: "wc"},
+		{id: "29287", text: "Wickenburg", region: "sw"},
+		{id: "46719", text: "Pasadena", region: "wc"},
+		{id: "47916", text: "Santa Cruz", region: "wc"},
 		{id: "450008", text: "Aberdeen", region: "wc"},
 		{id: "241044", text: "Bozeman", region: "mtw"},
-		{id: "052281", text: "Dillon", region: "mtw"},
-		{id: "050848", text: "Boulder", region: "mtw"},
-		{id: "145856", text: "Norton", region: "miw"},
+		{id: "52281", text: "Dillon", region: "mtw"},
+		{id: "50848", text: "Boulder", region: "mtw"},
+		{id: "138296", text: "Toledo", region: "miw"},
 		{id: "112193", text: "Decatur", region: "miw"},
+		{id: "48758", text: "Tahoe City", region: "wc"}
 	];
 
 
@@ -48,8 +49,8 @@
 					text: "Highs and lows",
 					mapHeader: "The stations",
 					histogramHeader: "Visualizing individual stations",
-					mapText: "These long-running stations are scattered throughout the US; a subset are shown here. Click on one of the map's dots to view its data, or click on one of the representative station locations listed below.",
- 				    histogramText: "Each station's dataset consists of daily minimum and maximum temperatures.  To visualize the distribution of these daily highs and lows throughout the year, we can construct a radial histogram in which angle corresponds to season and radial distance to temperature.",
+					mapText: "These long-running stations are scattered throughout the US. Click on one of the map's dots to view its data, or click on one of the representative station locations listed below.",
+ 				    histogramText: "To visualize the distribution of daily highs and lows throughout the year, we can construct a radial histogram in which angle corresponds to season and radial distance to temperature. Daily highs are in red; daily lows in blue.",
 				}, 
 	          	{
 	              	header: "Part 2", 
@@ -58,17 +59,17 @@
 	              	text: "Changes over time",
 	              	mapHeader: "Where have temperatures changed?",
 	              	histogramHeader: "Visualizing temperature changes",
-	              	mapText: "To visualize changes in temperature at each station, we can compare the mean high or low temperature during two different time intervals. Use the sliders to the right to select these time intervals; the dots below are colored according to the temperature difference at each station.",
-	              	histogramText: "",
+	              	mapText: "Use the sliders on the right to select two time intervals to compare; the histogram bins are colored according to the change in counts between the two intervals.",
+	              	histogramText: "Histogram bins with fewer counts coming from the more recent interval are colored orange; those with more are colored green. A rise in temperature therefore appears as an inner 'ring' of red bins surrounded by a ring of green bins.",
 	          	},
 	          	{
 	              	header: "Part 3", 
 	              	id: "changes-regional", 
 	              	method: "loadTab3", 
 	              	text: "Regional averages",
-	              	mapHeader: "Aggregating stations by region",
-	              	histogramHeader: "Visualizing aggregated data",
-
+	              	mapHeader: "Coming soon...",
+	              	histogramHeader: "Coming soon...",
+	              	mapText: "Coming soon..."
 	              },];
 
 
